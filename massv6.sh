@@ -15,6 +15,7 @@ fi
 if [ ! $IPV6 ]; then
 		read -p "Enter ipv6: " IPV6
 	fi
+    echo 'Your ipv6: ' $IPV6
 echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 . $HOME/.bash_profile
 sleep 1
