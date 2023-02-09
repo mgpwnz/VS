@@ -8,10 +8,21 @@ if exists curl; then
 else
   sudo apt update && sudo apt install curl -y < "/dev/null"
 fi
-#change ip
+if [ -f "$bash_profile" ]; then
+    . $HOME/.bash_profile
+fi
+#add ip
 if [ ! $IPV6 ]; then
 		read -p "Enter ipv6: " IPV6
 	fi
 echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
+. $HOME/.bash_profile
 sleep 1
-    
+#Make conf
+rm $HOME/massa/massa-node/config/config.toml
+sleep 1
+echo "[network]
+routable_ip = "$IPV6"
+" > $HOME/massa/massa-node/config/config.toml
+sleep 1
+systemctl restart massad
