@@ -27,7 +27,7 @@ if [ ! -d $HOME/massa/massa-node/config/ ]; then
 rm $HOME/massa/massa-node/config/config.toml &>/dev/null
 sleep 1
 echo "[network]
-routable_ip = "$IPV6"
+routable_ip = "`$IPV6`"
 " > $HOME/massa/massa-node/config/config.toml 
 sleep 1
 systemctl restart massad
