@@ -15,8 +15,8 @@ fi
 if [ ! $IPV6 ]; then
 		read -p "Enter ipv6: " IPV6
 	fi
-    echo 'Your ipv6: ' $IPV6
-echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
+    echo 'Your ipv6: ' ${IPV6}
+echo export PORT=${IPV6} >> $HOME/.bash_profile
 source $HOME/.bash_profile
 sleep 1
 #Make conf
@@ -27,7 +27,7 @@ if [ ! -d $HOME/massa/massa-node/config/ ]; then
 rm $HOME/massa/massa-node/config/config.toml
 sleep 1
 echo "[network]
-routable_ip = ""$IPV6""
+routable_ip = "${IPV6}"
 " > $HOME/massa/massa-node/config/config.toml 
 sleep 1
 systemctl restart massad
