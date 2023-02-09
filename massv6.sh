@@ -17,7 +17,7 @@ if [ ! $IPV6 ]; then
 	fi
     echo 'Your ipv6: ' $IPV6
 echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
-. $HOME/.bash_profile
+source $HOME/.bash_profile
 sleep 1
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
