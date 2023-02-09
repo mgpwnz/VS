@@ -24,7 +24,7 @@ if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
     exit
     else
-rm $HOME/massa/massa-node/config/config.toml &>/dev/null
+rm $HOME/massa/massa-node/config/config.toml
 sleep 1
 echo "[network]
 routable_ip = "`$IPV6`"
