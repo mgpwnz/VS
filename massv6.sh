@@ -19,14 +19,14 @@ echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 . $HOME/.bash_profile
 sleep 1
 #Make conf
-if [! -d $HOME/massa/massa-node/config/ ]; then
+if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
     return 0
     fi
-rm $HOME/massa/massa-node/config/config.toml < "/dev/null"
+rm $HOME/massa/massa-node/config/config.toml &>/dev/null
 sleep 1
 echo "[network]
 routable_ip = "$IPV6"
 " > $HOME/massa/massa-node/config/config.toml
 sleep 1
-systemctl restart massad < "/dev/null"
+systemctl restart massad 
