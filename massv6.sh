@@ -22,7 +22,7 @@ sleep 1
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
-    return 1
+    done
     else
 rm $HOME/massa/massa-node/config/config.toml &>/dev/null
 sleep 1
