@@ -12,21 +12,21 @@ if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 #add ip
-if [ ! -n "$IPV6" ]; then
-	printf "Enter your ipv6 address: "
-    read IPV6 
-    echo 'export IPV6='{$IPV6} >> $HOME/.bash_profile
-	fi
-  echo -e '\n\e[42mYour ipv6 address:' $IPV6 '\e[0m\n'
-echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
-	. $HOME/.bash_profile
-sleep 1
+
+if [ ! $IPV6 ]; then
+		read -p "Enter ipv6 address: " IPV6
+		echo 'export IPV6='${IPV6} >> $HOME/.bash_profile
+	  echo -e '\n\e[42mYour ipv6 address:' $IPV6 '\e[0m\n'
+    source $HOME/.bash_profile
+    fi
+    sleep 1
+
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
     exit
     else
-rm $HOME/massa/massa-node/config/config.toml
+rm $HOME/massa/massa-node/config/config.toml 
   sleep 1
 
 tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
