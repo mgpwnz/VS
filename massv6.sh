@@ -13,8 +13,8 @@ if [ -f "$bash_profile" ]; then
 fi
 #add ip
 if [ ! -n "$IPV6" ]; then
-	printf_n "Enter your ipv6 address"
-    read -p IPV6
+	printf "Enter your ipv6 address: "
+    read IPV6 
     echo export PORT=$IPV6 >> $HOME/.bash_profile
     source $HOME/.bash_profile
 	fi
