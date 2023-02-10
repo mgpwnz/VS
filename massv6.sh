@@ -12,12 +12,12 @@ if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 #add ip
-if [ ! $IPV6 ]; then
+if [ ! ${IPV6} ]; then
 	echo "============================================================"
   echo "Enter your ipv6 address"
   echo "============================================================"
     read  IPV6
-    echo export PORT=$IPV6 >> $HOME/.bash_profile
+    echo export PORT=${IPV6} >> $HOME/.bash_profile
     source $HOME/.bash_profile
 	fi
 sleep 1
@@ -27,10 +27,12 @@ if [ ! -d $HOME/massa/massa-node/config/ ]; then
     exit
     else
 rm $HOME/massa/massa-node/config/config.toml
-sleep 1
-sudo tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
-routable_ip = "$IPV6"
-EOF 
+  sleep 1
+  
+tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
+routable_ip = "${IPV6}"
+EOF
+
 sleep 1
 systemctl restart massad
 fi
