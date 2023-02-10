@@ -12,7 +12,7 @@ if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 #add ip
-if [ ! -n $IPV6 ]; then
+if [ ! -n "$IPV6" ]; then
 	echo "============================================================"
   echo "Enter your ipv6 address"
   echo "============================================================"
