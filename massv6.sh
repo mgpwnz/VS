@@ -17,7 +17,7 @@ if [ ! -n ${IPV6} ]; then
   echo "Enter your ipv6 address"
   echo "============================================================"
     read  IPV6
-    echo export PORT=${IPV6} >> $HOME/.bash_profile
+    echo 'export PORT='${IPV6} >> $HOME/.bash_profile
     source $HOME/.bash_profile
 	fi
 sleep 1
