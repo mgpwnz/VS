@@ -15,9 +15,9 @@ fi
 if [ ! -n "$IPV6" ]; then
 	printf "Enter your ipv6 address: "
     read IPV6 
-    echo 'export PORT='{$IPV6} >> $HOME/.bash_profile
+    echo 'export IPV6='{$IPV6} >> $HOME/.bash_profile
 	fi
-  echo -e '\n\e[42mYour ipv6 address:' $MAIL '\e[0m\n'
+  echo -e '\n\e[42mYour ipv6 address:' $IPV6 '\e[0m\n'
 echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 	. $HOME/.bash_profile
 sleep 1
