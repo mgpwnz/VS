@@ -46,7 +46,7 @@ EOF
 sleep 1
 systemctl restart massad
 fi
-source $HOME/.bash_profile
+. $HOME/.bash_profile
 break
 ;;
 
