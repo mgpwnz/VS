@@ -31,6 +31,8 @@ read IPV6
 echo export IPV6=${IPV6} >> $HOME/.bash_profile
 source $HOME/.bash_profile
 fi
+sed -i '/^$/d' $HOME/.bash_profile
+. $HOME/.bash_profile
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
