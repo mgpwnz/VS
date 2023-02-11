@@ -7,7 +7,7 @@ do
 # Menu
 
 PS3='Select an action: '
-options=("Enable ipv6 Contabo" "Change massa config" "Exit")
+options=("Change massa config" "Enable ipv6 Contabo" "Exit")
 select opt in "${options[@]}"
                do
                    case $opt in                           
@@ -46,7 +46,7 @@ EOF
 sleep 1
 systemctl restart massad
 fi
-
+source $HOME/.bash_profile
 break
 ;;
 
