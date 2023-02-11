@@ -23,14 +23,14 @@ break
 
 
 "Change massa config")
-
+if [ ! $IPV6 ]; then
 echo "============================================================"
 echo "Enter your ipv6 address"
 echo "============================================================"
 read IPV6
 echo export IPV6=${IPV6} >> $HOME/.bash_profile
 source $HOME/.bash_profile
-
+fi
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
     echo -e '\n\e[42m Massa is not installed!\e[0m\n'
