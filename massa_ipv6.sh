@@ -3,7 +3,6 @@
 while true
 do
 
-
 # Menu
 
 PS3='Select an action: '
@@ -23,15 +22,17 @@ break
 
 
 "Change massa config")
+bash_profile=$HOME/.bash_profile
+if [ -f "$bash_profile" ]; then
+    . $HOME/.bash_profile
+fi
 if [ ! $IPV6 ]; then
 echo "============================================================"
 echo "Enter your ipv6 address"
 echo "============================================================"
 read IPV6
 echo export IPV6=${IPV6} >> $HOME/.bash_profile
-source $HOME/.bash_profile
 fi
-sed -i '/^$/d' $HOME/.bash_profile
 . $HOME/.bash_profile
 #Make conf
 if [ ! -d $HOME/massa/massa-node/config/ ]; then
@@ -48,7 +49,7 @@ EOF
 sleep 1
 systemctl restart massad
 fi
-. $HOME/.bash_profile
+
 break
 ;;
 
