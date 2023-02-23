@@ -21,7 +21,7 @@ break
 
 "Change massa config")
 sudo apt install net-tools
-if [ -d $HOME/massa/ ], then
+if [ -d $HOME/massa/ ]; then
 sed -i -e "s%routable_ip *=.*%routable_ip = \"$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')\"%g" $HOME/massa/massa-node/config/config.toml
 sleep 2
 systemctl restart massad
