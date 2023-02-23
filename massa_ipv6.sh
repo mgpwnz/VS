@@ -12,17 +12,15 @@ select opt in "${options[@]}"
                    case $opt in                           
 
 "Enable ipv6 Contabo")
-echo "============================================================"
-echo "Enable ipv6 Contabo"
-echo "============================================================"
 # Change plan
 sed -i "/net.ipv6.conf.all.disable_ipv6.*/d" /etc/sysctl.conf && sysctl -q -p && echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6 && sed -i "s/#//" /etc/netplan/01-netcfg.yaml && netplan generate && netplan apply
+echo " Ipv6 Enable"
 break
 ;;
 
 
 "Change massa config")
-
+sudo apt install net-tools
 sed -i -e "s%routable_ip *=.*%routable_ip = \"$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')\"%g" $HOME/massa/massa-node/config/config.toml
 sleep 2
 systemctl restart massad
