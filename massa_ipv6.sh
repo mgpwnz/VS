@@ -20,14 +20,18 @@ break
 
 
 "Change massa config")
-sudo apt install net-tools
+if exists net-tools; then
+	echo ''
+else
+  sudo apt install net-tools  < "/dev/null"
+fi
+
 if [ ! -d $HOME/massa/ ]; then
 echo "Massa is not install"
-
-else
-sed -i -e "s%routable_ip *=.*%routable_ip = \"$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')\"%g" $HOME/massa/massa-node/config/config.toml
-sleep 2
-systemctl restart massad
+    else
+    sed -i -e "s%routable_ip *=.*%routable_ip = \"$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')\"%g" $HOME/massa/massa-node/config/config.toml
+    sleep 2
+    ystemctl restart massad
 fi
 
 break
