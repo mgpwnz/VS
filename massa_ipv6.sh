@@ -22,35 +22,14 @@ break
 
 
 "Change massa config")
-bash_profile=$HOME/.bash_profile
-if [ -f "$bash_profile" ]; then
-    . $HOME/.bash_profile
-fi
-if [ ! $IPV6 ]; then
-echo "============================================================"
-echo "Enter your ipv6 address"
-echo "============================================================"
-read IPV6
-echo export IPV6=${IPV6} >> $HOME/.bash_profile
-fi
-. $HOME/.bash_profile
-#Make conf
-if [ ! -d $HOME/massa/massa-node/config/ ]; then
-    echo -e '\n\e[42m Massa is not installed!\e[0m\n'
-    exit
-    else
-rm $HOME/massa/massa-node/config/config.toml 
-  sleep 1
 
-tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
-routable_ip = "$IPV6"
-EOF
-
-sleep 1
+sed -i -e "s%routable_ip *=.*%routable_ip = \"$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')\"%g" $HOME/massa/massa-node/config/config.toml
+sleep 2
 systemctl restart massad
 fi
 
 break
+exit
 ;;
 
 "Exit")
