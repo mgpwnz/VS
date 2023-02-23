@@ -28,8 +28,6 @@ else
     sleep 2
     systemctl restart massad
 fi
-
-break
 exit
 ;;
 
