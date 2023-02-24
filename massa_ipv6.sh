@@ -21,7 +21,9 @@ break
 
 
 "Change massa config")
-if [ ! -z $ipv6 ]; then
+ipv6=$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')
+
+if [ -z $ipv6 ]; then
 echo "You dont have IPV6"
 elif [ ! -d $HOME/massa/ ]; then
     echo -e "\e[32m"Massa is not install"\e[39m"
