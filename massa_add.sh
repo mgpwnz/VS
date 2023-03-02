@@ -98,6 +98,9 @@ uninstall() {
 cd /root
 sudo rm $HOME/rollsup.sh $HOME/massapasswd
 sudo rm /etc/cron.d/massarolls
+sleep 1
+. <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/multi_tool.sh) \
+-un
 echo "Done"
 }
 # Actions
