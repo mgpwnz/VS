@@ -26,6 +26,9 @@ while test $# -gt 0; do
 		;;
 	esac
 done
+install(){
+     . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/multi_tool.sh) 
+}
 # change config
 ipv6() {
     ipv6=$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')
