@@ -7,7 +7,7 @@ do
 # Menu
 
 PS3='Select an action: '
-options=("Change massa config" "Enable ipv6 ONLY Contabo" "Enable autobuy rolls" "Detete autobuy rolls" "Exit")
+options=("Change massa config" "Enable ipv6 ONLY Contabo" "Enable autobuy rolls" "Delete autobuy rolls" "Exit")
 select opt in "${options[@]}"
                do
                    case $opt in                           
