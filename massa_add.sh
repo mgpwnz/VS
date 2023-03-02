@@ -5,19 +5,19 @@ function="ipv6"
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
         case "$1" in
-        ip|--ipv6)
+        -ip|--ipv6)
             function="ipv6"
             shift
             ;;
-        cb|--contabo)
+        -cb|--contabo)
             function="contabo"
             shift
             ;;
-        ab|--autobuy)   
+        -ab|--autobuy)   
             function="autobuy"
             shift
             ;;
-        un|--uninstall)
+        -un|--uninstall)
             function="uninstall"
             shift
             ;;
