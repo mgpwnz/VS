@@ -77,7 +77,7 @@ break
 ;;
 "Delete autobuy rolls")
 cd /root
-sudo rm /root/rollsup.sh
+sudo rm /root/rollsup.sh /root/massa_password
 sudo rm /etc/cron.d/massarolls
 echo "Done"
 break
