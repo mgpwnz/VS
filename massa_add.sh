@@ -13,7 +13,7 @@ while test $# -gt 0; do
             function="contabo"
             shift
             ;;
-        ar|--autobuy)   
+        ab|--autobuy)   
             function="autobuy"
             shift
             ;;
