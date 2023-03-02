@@ -1,6 +1,6 @@
 #!/bin/bash
 # Default variables
-function="install"
+function="ipv6"
 # Options
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
@@ -26,9 +26,6 @@ while test $# -gt 0; do
 		;;
 	esac
 done
-install(){
-     . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/multi_tool.sh) 
-}
 # change config
 ipv6() {
     ipv6=$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')
@@ -98,9 +95,6 @@ uninstall() {
 cd /root
 sudo rm $HOME/rollsup.sh $HOME/massapasswd
 sudo rm /etc/cron.d/massarolls
-sleep 1
-. <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/multi_tool.sh) \
--un
 echo "Done"
 }
 # Actions
