@@ -72,12 +72,12 @@ sleep 1
 sudo tee $HOME/massapasswd > /dev/null <<EOF
 $massa_password
 EOF
-echo "script Enable"
+echo "Done"
 break
 ;;
 "Delete autobuy rolls")
 cd /root
-sudo rm /root/rollsup.sh /root/massa_password
+sudo rm $HOME/rollsup.sh $HOME/massapasswd
 sudo rm /etc/cron.d/massarolls
 echo "Done"
 break
