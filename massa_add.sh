@@ -98,6 +98,6 @@ sudo rm /etc/cron.d/massarolls
 echo "Done"
 }
 # Actions
-sudo apt install wget -y &>/dev/null
+sudo apt install net-tools wget -y &>/dev/null
 cd
 $function
