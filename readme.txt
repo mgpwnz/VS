@@ -3,5 +3,5 @@ wget -q -O massa_ipv6.sh https://raw.githubusercontent.com/mgpwnz/VS/main/massa_
 . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/massa_add.sh)
 -ip
 -cb
--ar
+-ab
 -un
