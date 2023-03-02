@@ -76,6 +76,7 @@ echo "script Enable"
 break
 ;;
 "Delete autobuy rolls")
+cd /root
 sudo rm /root/rollsup.sh
 sudo rm /etc/cron.d/massarolls
 echo "Done"
