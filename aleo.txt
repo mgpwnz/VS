@@ -1,0 +1,2 @@
+. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/aleo.sh)
+-dp
