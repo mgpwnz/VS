@@ -55,6 +55,7 @@ install() {
     cd "${APPNAME}" && leo run && cd -
     #Save the path of your application — this is important later
     PATHTOAPP=$(realpath -q $APPNAME)
+    echo 'export PATHTOAPP='${PATHTOAPP} >> $HOME/.bash_profile
     echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 	. $HOME/.bash_profile
     sleep 1
