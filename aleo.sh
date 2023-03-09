@@ -59,6 +59,7 @@ install() {
     echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 	. $HOME/.bash_profile
     sleep 1
+    cd
 }
 deploy(){
 #Navigate to the path of your app
@@ -70,8 +71,9 @@ cd $PATHTOAPP && cd ..
 	fi
     PRIVATEKEY="${PRIVATEKEY}"
     . $HOME/.bash_profile
+    sleep 1
 #Record
-    if [ ! $PRIVATEKEY ]; then
+    if [ ! $RECORD ]; then
 		read -p "Enter wallet address: " RECORD
 		echo 'export RECORD='${RECORD} >> $HOME/.bash_profile
 	fi
