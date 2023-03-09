@@ -31,6 +31,7 @@ install() {
     cd leo
     cargo install --path .
     #install Shark OS
+    cd $HOME/
     git clone https://github.com/AleoHQ/snarkOS.git --depth 1
     cd snarkOS
     cargo install --path .
@@ -43,14 +44,8 @@ install() {
 		echo 'export WALLETADDRESS='${WALLETADDRESS} >> $HOME/.bash_profile
 	fi
     echo -e '\n\e[42mYour wallet address:' $WALLETADDRESS '\e[0m\n'
-    #Wallet Name
-    if [ ! $WALLETADDRESS ]; then
-		read -p "Enter wallet name: " NAME
-		echo 'export NAME='${NAME} >> $HOME/.bash_profile
-	fi
-    echo -e '\n\e[42mYour wallet name:' $NAME '\e[0m\n'
     #Appname
-    APPNAME=${NAME}_"${WALLETADDRESS:4:6}"
+    APPNAME=helloworld_"${WALLETADDRESS:4:6}"
     #Create a new test Leo application  
     leo new "${APPNAME}"
     #Run your Leo application to make sure things are working
