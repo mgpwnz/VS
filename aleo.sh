@@ -44,8 +44,11 @@ install() {
 		echo 'export WALLETADDRESS='${WALLETADDRESS} >> $HOME/.bash_profile
 	fi
     echo -e '\n\e[42mYour wallet address:' $WALLETADDRESS '\e[0m\n'
+    . $HOME/.bash_profile
     #Appname
     APPNAME=helloworld_"${WALLETADDRESS:4:6}"
+    echo 'export APPNAME='${APPNAME} >> $HOME/.bash_profile
+    . $HOME/.bash_profile
     #Create a new test Leo application  
     leo new "${APPNAME}"
     #Run your Leo application to make sure things are working
@@ -61,16 +64,18 @@ deploy(){
 cd $PATHTOAPP && cd ..
 #PRIVATEKEY
     if [ ! $PRIVATEKEY ]; then
-		read -p "Enter wallet address: " PRIVATEKEY
+		read -p "Enter Private Key: " PRIVATEKEY
 		echo 'export PRIVATEKEY='${PRIVATEKEY} >> $HOME/.bash_profile
 	fi
     PRIVATEKEY="${PRIVATEKEY}"
+    . $HOME/.bash_profile
 #Record
     if [ ! $PRIVATEKEY ]; then
 		read -p "Enter wallet address: " RECORD
 		echo 'export RECORD='${RECORD} >> $HOME/.bash_profile
 	fi
     RECORD="${RECORD}"
+    . $HOME/.bash_profile
 #Deploy your Leo application (if all your variables were assigned correctly, you should be able to copy/paste the following
 snarkos developer deploy "${APPNAME}.aleo" --private-key "${PRIVATEKEY}" --query "https://vm.aleo.org/api" --path "./${APPNAME}/build/" --broadcast "https://vm.aleo.org/api/testnet3/transaction/broadcast" --fee 600000 --record "${RECORD}"
 }
