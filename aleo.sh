@@ -74,7 +74,7 @@ cd $PATHTOAPP && cd ..
     sleep 1
 #Record
     if [ ! $RECORD ]; then
-		read -p "Enter wallet address: " RECORD
+		read -p "Enter Record: " RECORD
 		echo 'export RECORD='${RECORD} >> $HOME/.bash_profile
 	fi
     RECORD="${RECORD}"
