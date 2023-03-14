@@ -9,12 +9,24 @@ while test $# -gt 0; do
             function="install"
             shift
             ;;
-        -sc|--second)
+        -in2|--second)
             function="second"
+            shift
+            ;;
+        -in3|--three)
+            function="three"
             shift
             ;;    
         -un|--uninstall)
             function="uninstall"
+            shift
+            ;;
+        -un2|--uninstall2)
+            function="uninstall2"
+            shift
+            ;;
+        -un3|--uninstall3)
+            function="uninstall3"
             shift
             ;;
         *|--)
@@ -72,7 +84,6 @@ if [ ! $SUBSPACE_PLOT_SIZE ]; then
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace
-cd $HOME/subspace
 sleep 1
  # Create script 
  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
@@ -132,7 +143,8 @@ sleep 1
 EOF
 sleep 2
 #docker run
-cd $HOME/subspace && docker compose up -d && docker compose logs -f
+docker compose -f $HOME/subspace/docker-compose.yml up -d && docker compose -f $HOME/subspace/docker-compose.yml logs -f
+
 }
 second() {
 cd $HOME
@@ -153,10 +165,9 @@ if [ ! $SUBSPACE_PLOT_SIZE2 ]; then
 		echo 'export SUBSPACE_PLOT_SIZE2='$SUBSPACE_PLOT_SIZE2 >> $HOME/.bash_profile
 	fi
 #version
-local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
+#local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace2
-cd $HOME/subspace2
 sleep 1
  # Create script 
   tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
@@ -216,11 +227,106 @@ sleep 1
 EOF
 sleep 2
 #docker run
-cd $HOME/subspace && docker compose up -d && docker compose logs -f
+docker compose -f $HOME/subspace2/docker-compose.yml up -d && docker compose -f $HOME/subspace2/docker-compose.yml logs -f
+}
+three() {
+cd $HOME
+#create var3
+#SUBSPACE_WALLET_ADDRESS3
+if [ ! $SUBSPACE_WALLET_ADDRESS3 ]; then
+		read -p "Enter wallet address3: " SUBSPACE_WALLET_ADDRESS3
+		echo 'export SUBSPACE_WALLET_ADDRESS3='${SUBSPACE_WALLET_ADDRESS3} >> $HOME/.bash_profile
+	fi
+#SUBSPACE_NODE_NAME3
+if [ ! $SUBSPACE_NODE_NAME3 ]; then
+		read -p "Enter node name3: " SUBSPACE_NODE_NAME3
+		echo 'export SUBSPACE_NODE_NAME3='$SUBSPACE_NODE_NAME3 >> $HOME/.bash_profile
+	fi
+#SUBSPACE_PLOT_SIZE3
+if [ ! $SUBSPACE_PLOT_SIZE3 ]; then
+		read -p "Enter plot size 50-100G: " SUBSPACE_PLOT_SIZE3
+		echo 'export SUBSPACE_PLOT_SIZE3='$SUBSPACE_PLOT_SIZE3 >> $HOME/.bash_profile
+	fi
+#version
+#local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
+#create dir and config
+mkdir $HOME/subspace3
+sleep 1
+ # Create script 
+  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
+  version: "3.7"
+  services:
+    node:
+      image: ghcr.io/subspace/node:gemini-3c-2023-mar-07
+      volumes:
+        - node-data:/var/subspace:rw
+      ports:
+        - "0.0.0.0:35333:30333"
+        - "0.0.0.0:35433:30433"
+      restart: unless-stopped
+      command: [
+        "--chain", "gemini-3c",
+        "--base-path", "/var/subspace",
+        "--execution", "wasm",
+        "--blocks-pruning", "archive",
+        "--state-pruning", "archive",
+        "--port", "30333",
+        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/30433",
+        "--rpc-cors", "all",
+        "--rpc-methods", "safe",
+        "--unsafe-ws-external",
+        "--dsn-disable-private-ips",
+        "--no-private-ipv4",
+        "--validator",
+        "--name", "$SUBSPACE_NODE_NAME3"
+      ]
+      healthcheck:
+        timeout: 5s
+        interval: 30s
+        retries: 5
+
+    farmer:
+      depends_on:
+        node:
+          condition: service_healthy
+      image: ghcr.io/subspace/farmer:gemini-3c-2023-mar-07
+      volumes:
+        - farmer-data:/var/subspace:rw
+      ports:
+        - "0.0.0.0:35533:30533"
+      restart: unless-stopped
+      command: [
+        "--base-path", "/var/subspace",
+        "farm",
+        "--disable-private-ips",
+        "--node-rpc-url", "ws://node:9944",
+        "--listen-on", "/ip4/0.0.0.0/tcp/30533",
+        "--reward-address", "$SUBSPACE_WALLET_ADDRESS3",
+        "--plot-size", "$SUBSPACE_PLOT_SIZE3"
+      ]
+  volumes:
+    node-data:
+    farmer-data:
+EOF
+sleep 2
+#docker run
+docker compose -f $HOME/subspace3/docker-compose.yml up -d && docker compose -f $HOME/subspace3/docker-compose.yml logs -f
 }
 uninstall() {
-cd $HOME/subspace && docker compose down -v
+docker compose -f $HOME/subspace/docker-compose.yml down -v
 sudo rm -rf $HOME/subspace 
+echo "Done"
+cd
+}
+uninstall2() {
+docker compose -f $HOME/subspace2/docker-compose.yml down -v
+sudo rm -rf $HOME/subspace2 
+echo "Done"
+cd
+}
+uninstall3() {
+docker compose -f $HOME/subspace3/docker-compose.yml down -v
+sudo rm -rf $HOME/subspace3 
 echo "Done"
 cd
 }
