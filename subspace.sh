@@ -52,7 +52,7 @@ if ! docker --version; then
 cd $HOME
 #create var
 #SUBSPACE_WALLET_ADDRESS
-if [ ! ${SUBSPACE_WALLET_ADDRESS} ]; then
+if [ ! $SUBSPACE_WALLET_ADDRESS ]; then
 		read -p "Enter wallet address: " SUBSPACE_WALLET_ADDRESS
 		echo 'export SUBSPACE_WALLET_ADDRESS='${SUBSPACE_WALLET_ADDRESS} >> $HOME/.bash_profile
 	fi
