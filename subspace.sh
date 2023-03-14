@@ -84,6 +84,7 @@ if [ ! $SUBSPACE_PLOT_SIZE ]; then
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace
+cd $HOME/subspace
 sleep 1
  # Create script 
  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
@@ -143,7 +144,7 @@ sleep 1
 EOF
 sleep 2
 #docker run
-docker compose -f $HOME/subspace/docker-compose.yml up -d && docker compose -f $HOME/subspace/docker-compose.yml logs -f
+docker compose up -d && docker compose logs -f --tail 1000
 
 }
 second() {
@@ -168,6 +169,7 @@ if [ ! $SUBSPACE_PLOT_SIZE2 ]; then
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace2
+cd $HOME/subspace2
 sleep 1
  # Create script 
   tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
@@ -227,7 +229,7 @@ sleep 1
 EOF
 sleep 2
 #docker run
-docker compose -f $HOME/subspace2/docker-compose.yml up -d && docker compose -f $HOME/subspace2/docker-compose.yml logs -f
+docker compose up -d && docker compose logs -f --tail 1000
 }
 three() {
 cd $HOME
@@ -251,6 +253,7 @@ if [ ! $SUBSPACE_PLOT_SIZE3 ]; then
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace3
+cd $HOME/subspace3
 sleep 1
  # Create script 
   tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
@@ -310,23 +313,28 @@ sleep 1
 EOF
 sleep 2
 #docker run
-docker compose -f $HOME/subspace3/docker-compose.yml up -d && docker compose -f $HOME/subspace3/docker-compose.yml logs -f
+docker compose up -d && docker compose logs -f --tail 1000
 }
 uninstall() {
-docker compose -f $HOME/subspace/docker-compose.yml down -v
+cd $HOME/subspace
+docker compose down -v
 sudo rm -rf $HOME/subspace 
 echo "Done"
 cd
 }
 uninstall2() {
-docker compose -f $HOME/subspace2/docker-compose.yml down -v
-sudo rm -rf $HOME/subspace2 
+cd $HOME/subspace2
+docker compose down -v
+sudo rm -rf $HOME/subspace2
+cd 
 echo "Done"
 cd
 }
 uninstall3() {
-docker compose -f $HOME/subspace3/docker-compose.yml down -v
+cd $HOME/subspace3
+docker compose down -v
 sudo rm -rf $HOME/subspace3 
+cd
 echo "Done"
 cd
 }
