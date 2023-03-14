@@ -123,7 +123,7 @@ sleep 1
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
         "--listen-on", "/ip4/0.0.0.0/tcp/30533",
-        "--reward-address", "$SUBSPACE_WALLET_ADDRESS_ADDRESS",
+        "--reward-address", "${SUBSPACE_WALLET_ADDRESS}",
         "--plot-size", "$SUBSPACE_PLOT_SIZE"
       ]
   volumes:
@@ -207,7 +207,7 @@ sleep 1
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
         "--listen-on", "/ip4/0.0.0.0/tcp/30533",
-        "--reward-address", "$SUBSPACE_WALLET_ADDRESS_ADDRESS2",
+        "--reward-address", "$SUBSPACE_WALLET_ADDRESS2",
         "--plot-size", "$SUBSPACE_PLOT_SIZE2"
       ]
   volumes:
