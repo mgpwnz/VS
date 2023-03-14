@@ -83,7 +83,9 @@ if [ ! $SUBSPACE_PLOT_SIZE ]; then
 #version
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
+if [ ! -d $HOME/subspace ]; then
 mkdir $HOME/subspace
+fi
 cd $HOME/subspace
 sleep 1
  # Create script 
@@ -168,7 +170,9 @@ if [ ! $SUBSPACE_PLOT_SIZE2 ]; then
 #version
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
+if [ ! -d $HOME/subspace2 ]; then
 mkdir $HOME/subspace2
+fi
 cd $HOME/subspace2
 sleep 1
  # Create script 
@@ -252,7 +256,9 @@ if [ ! $SUBSPACE_PLOT_SIZE3 ]; then
 #version
 #local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
+if [ ! -d $HOME/subspace3 ]; then
 mkdir $HOME/subspace3
+fi
 cd $HOME/subspace3
 sleep 1
  # Create script 
