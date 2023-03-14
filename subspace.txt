@@ -1,2 +1,6 @@
 . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/subspace.sh)
 del  -un
+-in2
+-in3
+-un2
+-un3
