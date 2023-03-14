@@ -52,9 +52,9 @@ if ! docker --version; then
 cd $HOME
 #create var
 #SUBSPACE_WALLET_ADDRESS
-if [ ! $SUBSPACE_WALLET_ADDRESS ]; then
+if [ ! ${SUBSPACE_WALLET_ADDRESS} ]; then
 		read -p "Enter wallet address: " SUBSPACE_WALLET_ADDRESS
-		echo 'export SUBSPACE_WALLET_ADDRESS='$SUBSPACE_WALLET_ADDRESS >> $HOME/.bash_profile
+		echo 'export SUBSPACE_WALLET_ADDRESS='${SUBSPACE_WALLET_ADDRESS} >> $HOME/.bash_profile
 	fi
 #SUBSPACE_NODE_NAME
 if [ ! $SUBSPACE_NODE_NAME ]; then
@@ -145,12 +145,12 @@ if [ ! $SUBSPACE_WALLET_ADDRESS2 ]; then
 #SUBSPACE_NODE_NAME2
 if [ ! $SUBSPACE_NODE_NAME2 ]; then
 		read -p "Enter node name2: " SUBSPACE_NODE_NAME2
-		echo 'export SUBSPACE_NODE_NAME2='${SUBSPACE_NODE_NAME2} >> $HOME/.bash_profile
+		echo 'export SUBSPACE_NODE_NAME2='$SUBSPACE_NODE_NAME2 >> $HOME/.bash_profile
 	fi
 #SUBSPACE_PLOT_SIZE
 if [ ! $SUBSPACE_PLOT_SIZE2 ]; then
 		read -p "Enter plot size 50-100G: " SUBSPACE_PLOT_SIZE2
-		echo 'export SUBSPACE_PLOT_SIZE2='${SUBSPACE_PLOT_SIZE2} >> $HOME/.bash_profile
+		echo 'export SUBSPACE_PLOT_SIZE2='$SUBSPACE_PLOT_SIZE2 >> $HOME/.bash_profile
 	fi
 #version
 local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
@@ -159,21 +159,14 @@ mkdir $HOME/subspace2
 cd $HOME/subspace2
 sleep 1
  # Create script 
- tee $HOME/subspace2/docker-compose.yml > /dev/null <<EOF
+  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
   version: "3.7"
   services:
     node:
-      # For running on Aarch64 add `-aarch64` after `DATE`
       image: ghcr.io/subspace/node:gemini-3c-2023-mar-07
       volumes:
-  # Instead of specifying volume (which will store data in `/var/lib/docker`), you can
-  # alternatively specify path to the directory where files will be stored, just make
-  # sure everyone is allowed to write there
         - node-data:/var/subspace:rw
-  #      - /path/to/subspace-node:/var/subspace:rw
       ports:
-  # If port 30333 or 30433 is already occupied by another Substrate-based node, replace all
-  # occurrences of `30333` or `30433` in this file with another value
         - "0.0.0.0:34333:30333"
         - "0.0.0.0:34433:30433"
       restart: unless-stopped
@@ -191,12 +184,10 @@ sleep 1
         "--dsn-disable-private-ips",
         "--no-private-ipv4",
         "--validator",
-  # Replace `INSERT_YOUR_ID` with your node ID (will be shown in telemetry)
-        "--name", "$SUBSPACE_NODE_NAME"
+        "--name", "$SUBSPACE_NODE_NAME2"
       ]
       healthcheck:
         timeout: 5s
-  # If node setup takes longer than expected, you want to increase `interval` and `retries` number.
         interval: 30s
         retries: 5
 
@@ -204,18 +195,11 @@ sleep 1
       depends_on:
         node:
           condition: service_healthy
-      # For running on Aarch64 add `-aarch64` after `DATE`
       image: ghcr.io/subspace/farmer:gemini-3c-2023-mar-07
       volumes:
-  # Instead of specifying volume (which will store data in `/var/lib/docker`), you can
-  # alternatively specify path to the directory where files will be stored, just make
-  # sure everyone is allowed to write there
         - farmer-data:/var/subspace:rw
-  #      - /path/to/subspace-farmer:/var/subspace:rw
       ports:
-  # If port 34533 is already occupied by something else, replace all
-  # occurrences of `30533` in this file with another value
-        - "0.0.0.0:30533:30533"
+        - "0.0.0.0:34533:30533"
       restart: unless-stopped
       command: [
         "--base-path", "/var/subspace",
@@ -223,10 +207,8 @@ sleep 1
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
         "--listen-on", "/ip4/0.0.0.0/tcp/30533",
-  # Replace `WALLET_ADDRESS` with your Polkadot.js wallet address
-        "--reward-address", "$SUBSPACE_WALLET_ADDRESS_ADDRESS",
-  # Replace `PLOT_SIZE` with plot size in gigabytes or terabytes, for instance 100G or 2T (but leave at least 60G of disk space for node and some for OS)
-        "--plot-size", "$SUBSPACE_PLOT_SIZE"
+        "--reward-address", "$SUBSPACE_WALLET_ADDRESS_ADDRESS2",
+        "--plot-size", "$SUBSPACE_PLOT_SIZE2"
       ]
   volumes:
     node-data:
@@ -235,8 +217,6 @@ EOF
 sleep 2
 #docker run
 cd $HOME/subspace && docker compose up -d && docker compose logs -f
-
-
 }
 uninstall() {
 cd $HOME/subspace && docker compose down -v
