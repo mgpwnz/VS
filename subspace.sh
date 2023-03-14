@@ -25,6 +25,7 @@ done
 install() {
 #docker install
 cd
+touch $HOME/.bash_profile
 if ! docker --version; then
 		echo -e "${C_LGn}Docker installation...${RES}"
 		sudo apt update
@@ -53,20 +54,22 @@ cd $HOME
 #SUBSPACE_WALLET_ADDRESS
 if [ ! $SUBSPACE_WALLET_ADDRESS ]; then
 		read -p "Enter wallet address: " SUBSPACE_WALLET_ADDRESS
-		echo 'export SUBSPACE_WALLET_ADDRESS='${SUBSPACE_WALLET_ADDRESS} >> $HOME/.bash_profile
+		echo 'export SUBSPACE_WALLET_ADDRESS='$SUBSPACE_WALLET_ADDRESS >> $HOME/.bash_profile
 	fi
 #SUBSPACE_NODE_NAME
 if [ ! $SUBSPACE_NODE_NAME ]; then
 		read -p "Enter node name: " SUBSPACE_NODE_NAME
-		echo 'export SUBSPACE_NODE_NAME='${SUBSPACE_NODE_NAME} >> $HOME/.bash_profile
+		echo 'export SUBSPACE_NODE_NAME='$SUBSPACE_NODE_NAME >> $HOME/.bash_profile
 	fi
 #SUBSPACE_PLOT_SIZE
 if [ ! $SUBSPACE_PLOT_SIZE ]; then
 		read -p "Enter plot size 50-100G: " SUBSPACE_PLOT_SIZE
-		echo 'export SUBSPACE_PLOT_SIZE='${SUBSPACE_PLOT_SIZE} >> $HOME/.bash_profile
+		echo 'export SUBSPACE_PLOT_SIZE='$SUBSPACE_PLOT_SIZE >> $HOME/.bash_profile
 	fi
+   . $HOME/.bash_profile
+   sleep 1
 #version
-local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
+#local subspace_version=`wget -qO- https://api.github.com/repos/subspace/subspace/releases/latest | jq -r ".tag_name"`
 #create dir and config
 mkdir $HOME/subspace
 cd $HOME/subspace

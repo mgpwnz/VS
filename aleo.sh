@@ -21,6 +21,7 @@ done
 # change config
 install() {
     #upd&upg
+    touch $HOME/.bash_profile
     sudo apt update
 	sudo apt upgrade -y    
     #install rust
