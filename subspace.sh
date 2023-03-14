@@ -87,7 +87,7 @@ mkdir $HOME/subspace
 cd $HOME/subspace
 sleep 1
  # Create script 
- tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
+  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
   version: "3.7"
   services:
     node:
@@ -172,7 +172,7 @@ mkdir $HOME/subspace2
 cd $HOME/subspace2
 sleep 1
  # Create script 
-  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
+ tee $HOME/subspace2/docker-compose.yml > /dev/null <<EOF
   version: "3.7"
   services:
     node:
@@ -256,7 +256,7 @@ mkdir $HOME/subspace3
 cd $HOME/subspace3
 sleep 1
  # Create script 
-  tee $HOME/subspace/docker-compose.yml > /dev/null <<EOF
+ tee $HOME/subspace3/docker-compose.yml > /dev/null <<EOF
   version: "3.7"
   services:
     node:
