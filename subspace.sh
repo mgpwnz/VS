@@ -97,8 +97,8 @@ sleep 1
       volumes:
         - node-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:32333:30333"
-        - "0.0.0.0:32433:30433"
+        - "0.0.0.0:32333:32333"
+        - "0.0.0.0:32433:32433"
       restart: unless-stopped
       command: [
         "--chain", "gemini-3c",
@@ -106,8 +106,8 @@ sleep 1
         "--execution", "wasm",
         "--blocks-pruning", "archive",
         "--state-pruning", "archive",
-        "--port", "30333",
-        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/30433",
+        "--port", "32333",
+        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/32433",
         "--rpc-cors", "all",
         "--rpc-methods", "safe",
         "--unsafe-ws-external",
@@ -129,14 +129,14 @@ sleep 1
       volumes:
         - farmer-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:32533:30533"
+        - "0.0.0.0:32533:32533"
       restart: unless-stopped
       command: [
         "--base-path", "/var/subspace",
         "farm",
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
-        "--listen-on", "/ip4/0.0.0.0/tcp/30533",
+        "--listen-on", "/ip4/0.0.0.0/tcp/32533",
         "--reward-address", "${SUBSPACE_WALLET_ADDRESS}",
         "--plot-size", "$SUBSPACE_PLOT_SIZE"
       ]
@@ -184,8 +184,8 @@ sleep 1
       volumes:
         - node-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:34333:30333"
-        - "0.0.0.0:34433:30433"
+        - "0.0.0.0:34333:34333"
+        - "0.0.0.0:34433:34433"
       restart: unless-stopped
       command: [
         "--chain", "gemini-3c",
@@ -193,8 +193,8 @@ sleep 1
         "--execution", "wasm",
         "--blocks-pruning", "archive",
         "--state-pruning", "archive",
-        "--port", "30333",
-        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/30433",
+        "--port", "34333",
+        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/34433",
         "--rpc-cors", "all",
         "--rpc-methods", "safe",
         "--unsafe-ws-external",
@@ -216,14 +216,14 @@ sleep 1
       volumes:
         - farmer-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:34533:30533"
+        - "0.0.0.0:34533:34533"
       restart: unless-stopped
       command: [
         "--base-path", "/var/subspace",
         "farm",
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
-        "--listen-on", "/ip4/0.0.0.0/tcp/30533",
+        "--listen-on", "/ip4/0.0.0.0/tcp/34533",
         "--reward-address", "$SUBSPACE_WALLET_ADDRESS2",
         "--plot-size", "$SUBSPACE_PLOT_SIZE2"
       ]
@@ -270,8 +270,8 @@ sleep 1
       volumes:
         - node-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:35333:30333"
-        - "0.0.0.0:35433:30433"
+        - "0.0.0.0:35333:35333"
+        - "0.0.0.0:35433:35433"
       restart: unless-stopped
       command: [
         "--chain", "gemini-3c",
@@ -279,8 +279,8 @@ sleep 1
         "--execution", "wasm",
         "--blocks-pruning", "archive",
         "--state-pruning", "archive",
-        "--port", "30333",
-        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/30433",
+        "--port", "35333",
+        "--dsn-listen-on", "/ip4/0.0.0.0/tcp/35433",
         "--rpc-cors", "all",
         "--rpc-methods", "safe",
         "--unsafe-ws-external",
@@ -302,14 +302,14 @@ sleep 1
       volumes:
         - farmer-data:/var/subspace:rw
       ports:
-        - "0.0.0.0:35533:30533"
+        - "0.0.0.0:35533:35533"
       restart: unless-stopped
       command: [
         "--base-path", "/var/subspace",
         "farm",
         "--disable-private-ips",
         "--node-rpc-url", "ws://node:9944",
-        "--listen-on", "/ip4/0.0.0.0/tcp/30533",
+        "--listen-on", "/ip4/0.0.0.0/tcp/35533",
         "--reward-address", "$SUBSPACE_WALLET_ADDRESS3",
         "--plot-size", "$SUBSPACE_PLOT_SIZE3"
       ]
