@@ -45,6 +45,8 @@ LimitNOFILE=10000
 [Install]
 WantedBy=multi-user.target
 EOF
+sleep 1 
+cd
 systemctl restart systemd-journald 
 systemctl daemon-reload 
 systemctl enable subspace
