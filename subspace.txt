@@ -13,3 +13,6 @@
 -un2
 суфікс видалення 3 ноди
 -un3
+
+
+. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/servicesubspace.sh)

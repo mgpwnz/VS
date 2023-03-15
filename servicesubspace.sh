@@ -52,7 +52,7 @@ systemctl restart subspace
 echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 if [[ `service subspace status | grep active` =~ "running" ]]; then
   echo -e "Your subspace node \e[32minstalled and works\e[39m!"
-  echo -e "You can check node status by the command \e[7mservice ironfishd status\e[0m"
+  echo -e "You can check node status by the command \e[7mservice subspace status\e[0m"
   echo -e "Press \e[7mQ\e[0m for exit from status menu"
 else
  echo -e "Your subspace node \e[31mwas not installed correctly\e[39m, please reinstall."
@@ -71,31 +71,3 @@ cd
 sudo apt install tmux wget -y &>/dev/null
 cd
 $function
-
-
-
-
-
-
-
-
-
-
-
-
-
-sudo tee <<EOF >/dev/null /etc/systemd/system/subspace.service
-[Unit]
-Description=subspace Node
-After=network.target
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/
-ExecStart=/root/subspace-cli-ubuntu-x86_64-v0.1.9-alpha farm        
-Restart=always
-RestartSec=10
-LimitNOFILE=10000
-[Install]
-WantedBy=multi-user.target
-EOF
