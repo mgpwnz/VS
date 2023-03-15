@@ -181,7 +181,7 @@ sleep 1
   version: "3.7"
   services:
     node:
-      image: ghcr.io/subspace/node:gemini-3c-2023-mar-15
+      image: ghcr.io/subspace/node:$version
       volumes:
         - node-data:/var/subspace:rw
       ports:
@@ -213,7 +213,7 @@ sleep 1
       depends_on:
         node:
           condition: service_healthy
-      image: ghcr.io/subspace/farmer:gemini-3c-2023-mar-15
+      image: ghcr.io/subspace/farmer:$version
       volumes:
         - farmer-data:/var/subspace:rw
       ports:
@@ -267,7 +267,7 @@ sleep 1
   version: "3.7"
   services:
     node:
-      image: ghcr.io/subspace/node:gemini-3c-2023-mar-15
+      image: ghcr.io/subspace/node:$version
       volumes:
         - node-data:/var/subspace:rw
       ports:
@@ -299,7 +299,7 @@ sleep 1
       depends_on:
         node:
           condition: service_healthy
-      image: ghcr.io/subspace/farmer:gemini-3c-2023-mar-15
+      image: ghcr.io/subspace/farmer:$version
       volumes:
         - farmer-data:/var/subspace:rw
       ports:
