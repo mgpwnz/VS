@@ -1,6 +1,7 @@
 #!/bin/bash
 # Default variables
 function="install"
+version=`wget -qO- https://api.github.com/repos/subspace/subspace-cli/releases | jq '.[] | select(.prerelease==false) | select(.draft==false) | .html_url' | grep -Eo "v[0-9].[0-9].[0-9]-alpha" | head -n 1`
 # Options
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
@@ -20,14 +21,16 @@ while test $# -gt 0; do
 done
 install() {
 cd 
+sudo apt-get install wget jq ocl-icd-opencl-dev libopencl-clang-dev libgomp1 ocl-icd-libopencl1 -y
+sleep 2
 if [ ! -d $HOME/subspace ]; then
 mkdir $HOME/subspace
 fi
 cd $HOME/subspace
 #download cli
 wget https://github.com/subspace/subspace-cli/releases/download/v0.1.9-alpha/subspace-cli-ubuntu-x86_64-v0.1.9-alpha && \
-chmod +x subspace-cli-ubuntu-x86_64-v0.1.9-alpha && \
-./subspace-cli-ubuntu-x86_64-v0.1.9-alpha init
+chmod +x subspace-cli-ubuntu-x86_64-${version} && \
+./subspace-cli-ubuntu-x86_64-${version} init
 sleep 2
 #service
 sudo tee <<EOF >/dev/null /etc/systemd/system/subspace.service
@@ -38,19 +41,21 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/subspace/
-ExecStart=/root/subspace/subspace-cli-ubuntu-x86_64-v0.1.9-alpha farm  --verbose
+ExecStart=/root/subspace/subspace-cli-ubuntu-x86_64-$version farm  --verbose
 Restart=always
 RestartSec=10
 LimitNOFILE=10000
 [Install]
 WantedBy=multi-user.target
 EOF
-sleep 1 
-cd $HOME
+sleep 1
+sudo tee </dev/null /etc/systemd/journald.conf Storage=persistent EOF 
 systemctl restart systemd-journald 
 systemctl daemon-reload 
 systemctl enable subspace
 systemctl restart subspace
+sleep 1
+cd
 echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 if [[ `service subspace status | grep active` =~ "running" ]]; then
   echo -e "Your subspace node \e[32minstalled and works\e[39m!"
@@ -70,6 +75,6 @@ cd
 }
 
 # Actions
-sudo apt install tmux wget -y &>/dev/null
+sudo apt install wget -y &>/dev/null
 cd
 $function
