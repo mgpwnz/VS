@@ -49,7 +49,9 @@ LimitNOFILE=10000
 WantedBy=multi-user.target
 EOF
 sleep 1
-sudo tee </dev/null /etc/systemd/journald.conf Storage=persistent EOF 
+sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
+Storage=persistent
+EOF 
 systemctl restart systemd-journald 
 systemctl daemon-reload 
 systemctl enable subspace
