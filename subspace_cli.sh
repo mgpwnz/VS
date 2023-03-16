@@ -28,7 +28,7 @@ mkdir $HOME/subspace
 fi
 cd $HOME/subspace
 #download cli
-wget https://github.com/subspace/subspace-cli/releases/download/v0.1.9-alpha/subspace-cli-ubuntu-x86_64-v0.1.9-alpha && \
+wget https://github.com/subspace/subspace-cli/releases/download/v0.1.9-alpha/subspace-cli-ubuntu-x86_64-${version} && \
 chmod +x subspace-cli-ubuntu-x86_64-${version} && \
 ./subspace-cli-ubuntu-x86_64-${version} init
 sleep 2
