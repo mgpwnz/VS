@@ -1,6 +1,7 @@
 #!/bin/bash
 # Default variables
 function="install"
+function="installService"
 version=`wget -qO- https://api.github.com/repos/subspace/subspace-cli/releases | jq '.[] | select(.prerelease==false) | select(.draft==false) | .html_url' | grep -Eo "v[0-9].[0-9].[0-9]-alpha" | head -n 1`
 # Options
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
@@ -8,6 +9,7 @@ while test $# -gt 0; do
         case "$1" in
         -in|--install)
             function="install"
+            function="installService"
             shift
             ;;
         -un|--uninstall)
@@ -34,6 +36,8 @@ chmod +x subspace-cli-ubuntu-x86_64-${version} && \
 sleep 2
 #service
 cd $HOME
+}
+installService() {
 echo "[Unit]
 Description=Subspace Node
 After=network.target
