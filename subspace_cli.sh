@@ -33,13 +33,13 @@ chmod +x subspace-cli-ubuntu-x86_64-${version} && \
 ./subspace-cli-ubuntu-x86_64-${version} init
 sleep 2
 #service
-sudo tee <<EOF >/dev/null /etc/systemd/system/subspace.service
-[Unit]
-Description=subspace Node
+#sudo tee <<EOF >/dev/null /etc/systemd/system/subspace.service
+echo "[Unit]
+Description=Subspace Node
 After=network.target
 [Service]
 Type=simple
-User=root
+User=$USER
 WorkingDirectory=/root/subspace/
 ExecStart=/root/subspace/subspace-cli-ubuntu-x86_64-${version} farm  --verbose
 Restart=always
@@ -47,16 +47,15 @@ RestartSec=10
 LimitNOFILE=10000
 [Install]
 WantedBy=multi-user.target
-EOF
-sleep 1
+" > $HOME/subspace.service
+sudo mv $HOME/subspace.service /etc/systemd/system
 sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
 Storage=persistent
 EOF 
-systemctl restart systemd-journald 
-systemctl daemon-reload 
-systemctl enable subspace
-systemctl restart subspace
-sleep 1
+sudo systemctl restart systemd-journald 
+sudo systemctl daemon-reload 
+sudo systemctl enable subspace
+sudo systemctl restart subspace
 cd
 echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 if [[ `service subspace status | grep active` =~ "running" ]]; then
