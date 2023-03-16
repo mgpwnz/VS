@@ -58,7 +58,7 @@ echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 if [[ `service subspace status | grep active` =~ "running" ]]; then
   echo -e "Your subspace node \e[32minstalled and works\e[39m!"
   echo -e "You can check node status by the command \e[7mservice subspace status\e[0m"
-  echo -e "Press \e[7mQ\e[0m for exit from status menu"
+  echo -e "Use \e[7mjournalctl -fu subspace\e[0m for logs"
 else
  echo -e "Your subspace node \e[31mwas not installed correctly\e[39m, please reinstall."
 fi
