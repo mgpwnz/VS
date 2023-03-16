@@ -49,9 +49,6 @@ LimitNOFILE=10000
 WantedBy=multi-user.target
 " > $HOME/subspace.service
 sudo mv $HOME/subspace.service /etc/systemd/system
-sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
-Storage=persistent
-EOF 
 sudo systemctl restart systemd-journald 
 sudo systemctl daemon-reload
 echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1 
