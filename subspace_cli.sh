@@ -33,7 +33,7 @@ chmod +x subspace-cli-ubuntu-x86_64-${version} && \
 ./subspace-cli-ubuntu-x86_64-${version} init
 sleep 2
 #service
-#sudo tee <<EOF >/dev/null /etc/systemd/system/subspace.service
+cd $HOME
 echo "[Unit]
 Description=Subspace Node
 After=network.target
@@ -53,10 +53,10 @@ sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
 Storage=persistent
 EOF 
 sudo systemctl restart systemd-journald 
-sudo systemctl daemon-reload 
+sudo systemctl daemon-reload
+echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1 
 sudo systemctl enable subspace
 sudo systemctl restart subspace
-cd
 echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 if [[ `service subspace status | grep active` =~ "running" ]]; then
   echo -e "Your subspace node \e[32minstalled and works\e[39m!"
