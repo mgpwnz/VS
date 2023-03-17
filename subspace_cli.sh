@@ -1,7 +1,7 @@
 #!/bin/bash
 # Default variables
 function="install"
-version=v0.1.9-alpha
+version=$(wget -qO- https://api.github.com/repos/subspace/subspace-cli/releases | jq '.[] | select(.prerelease==false) | select(.draft==false) | .html_url' | grep -Eo "v[0-9]*.[0-9]*.[0-9]*-alpha" | head -n 1)
 # Options
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
@@ -32,6 +32,11 @@ wget https://github.com/subspace/subspace-cli/releases/download/${version}/subsp
 chmod +x subspace-cli-ubuntu-x86_64-${version} && \
 ./subspace-cli-ubuntu-x86_64-${version} init
 sleep 2
+#Change ports
+#sed -i -e "s/9933/19999/g" $HOME/.config/subspace-cli/settings.toml && \
+#sed -i -e "s/9944/19998/g" $HOME/.config/subspace-cli/settings.toml && \
+#sed -i -e "s/30333/19997/g" $HOME/.config/subspace-cli/settings.toml && \
+#sed -i -e "s/30433/19996/g" $HOME/.config/subspace-cli/settings.toml
 #service
 cd $HOME
 echo "[Unit]
@@ -66,7 +71,7 @@ fi
 uninstall() {
 sudo systemctl disable subspace
 sudo systemctl stop subspace    
-sudo rm -rf $HOME/subspace 
+sudo rm -rf $HOME/subspace $HOME/.config/subspace*
 sudo rm -rf $HOME/.local/share/subspace-cli/
 echo "Done"
 cd
