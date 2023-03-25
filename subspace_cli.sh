@@ -85,6 +85,7 @@ cd
 update() {
 if [[ ${version} != ${installed} ]]; then
 cd $HOME/subspace
+rm subspace-cli-ubuntu*
 #download cli
 wget https://github.com/subspace/subspace-cli/releases/download/${repo}/subspace-cli-ubuntu-x86_64-${version} && \
 chmod +x subspace-cli-ubuntu-x86_64-${version} && \
