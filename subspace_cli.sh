@@ -83,7 +83,7 @@ cd
 }
 update() {
 install=$(ls $HOME/subspace | sed -e "s%subspace-cli-ubuntu-x86_64-v%v%")
-if [ ${version} = ${install} ]; then
+if [[ ${version} = ${install} ]]; then
 echo -e "Your subspace node \e[32mlast version\e[39m!"
 else
 cd $HOME/subspace
