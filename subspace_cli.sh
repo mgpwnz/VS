@@ -96,6 +96,7 @@ echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1
 sudo systemctl enable subspace
 sudo systemctl restart subspace
 echo -e "Your subspace node \e[32mUpdate\e[39m!"
+cd $HOME
 fi
 }
 # Actions
