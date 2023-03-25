@@ -83,14 +83,14 @@ cd
 }
 update() {
 install=$(ls $HOME/subspace | sed -e "s%subspace-cli-ubuntu-x86_64-v%v%")
-if [ $version eq $install ]; then
+if [ $version = $install ]; then
 echo -e "Your subspace node \e[32mlast version\e[39m!"
 else
 cd $HOME/subspace
 #download cli
 wget https://github.com/subspace/subspace-cli/releases/download/${repo}/subspace-cli-ubuntu-x86_64-${version} && \
 chmod +x subspace-cli-ubuntu-x86_64-${version} && \
-sed -i -e "s/subspace-cli-ubuntu-x86_64-/subspace-cli-ubuntu-x86_64-${version}/g" /etc/systemd/system/subspace.service
+sed -i -e "s/subspace-cli-ubuntu-x86_64-.*/subspace-cli-ubuntu-x86_64-${version}/g" /etc/systemd/system/subspace.service
 sudo systemctl daemon-reload
 echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1 
 sudo systemctl enable subspace
