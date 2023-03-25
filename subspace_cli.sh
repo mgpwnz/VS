@@ -3,6 +3,7 @@
 function="install"
 repo=v0.1.11-alpha
 version=v3-v0.1.11-alpha
+installed=$(ls $HOME/subspace | sed -e "s%subspace-cli-ubuntu-x86_64-v%v%")
 # Options
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
@@ -82,8 +83,7 @@ echo "Done"
 cd
 }
 update() {
-install=$(ls $HOME/subspace | sed -e "s%subspace-cli-ubuntu-x86_64-v%v%")
-if [[ ${version} != ${install} ]]; then
+if [[ ${version} != ${installed} ]]; then
 cd $HOME/subspace
 #download cli
 wget https://github.com/subspace/subspace-cli/releases/download/${repo}/subspace-cli-ubuntu-x86_64-${version} && \
