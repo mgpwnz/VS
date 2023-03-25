@@ -15,6 +15,10 @@ while test $# -gt 0; do
             function="uninstall"
             shift
             ;;
+	 -up|--update)
+            function="update"
+            shift
+            ;;
         *|--)
 		break
 		;;
@@ -77,7 +81,23 @@ sudo rm -rf $HOME/.local/share/subspace-cli/
 echo "Done"
 cd
 }
-
+update() {
+install=$(ls $HOME/subspace | sed -e "s%subspace-cli-ubuntu-x86_64-v%v%")
+if[ $version==$install ]; then
+echo -e "Your subspace node \e[32mlast version\e[39m!"
+else
+cd $HOME/subspace
+#download cli
+wget https://github.com/subspace/subspace-cli/releases/download/${repo}/subspace-cli-ubuntu-x86_64-${version} && \
+chmod +x subspace-cli-ubuntu-x86_64-${version} && \
+sed -i -e "s/subspace-cli-ubuntu-x86_64-/subspace-cli-ubuntu-x86_64-${version}/g" /etc/systemd/system/subspace.service
+sudo systemctl daemon-reload
+echo -e '\n\e[42mRunning a service\e[0m\n' && sleep 1 
+sudo systemctl enable subspace
+sudo systemctl restart subspace
+echo -e "Your subspace node \e[32mUpdate\e[39m!"
+fi
+}
 # Actions
 sudo apt install wget -y &>/dev/null
 cd
