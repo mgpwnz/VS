@@ -19,14 +19,12 @@ while test $# -gt 0; do
 	esac
 done
 install() {
-
-sudo apt update && sudo apt install curl -y < "/dev/null"
 bash_profile=$HOME/.bash_profile
 if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 #Logo
-sleep 1 && curl -s https://raw.githubusercontent.com/mgpwnz/VS/main/logocz.sh | bash && sleep 2
+sleep 1 && curl -s https://raw.githubusercontent.com/mgpwnz/VS/main/logocz.sh | bash && sleep 4
 #var
 if [ ! $DEFUND_NODENAME ]; then
 read -p "Enter node name: " DEFUND_NODENAME
