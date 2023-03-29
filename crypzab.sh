@@ -26,7 +26,7 @@ if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 #Logo
-sleep 1 && curl -s logocz.sh | bash && sleep 2
+sleep 1 && curl -s https://raw.githubusercontent.com/mgpwnz/VS/main/logocz.sh | bash && sleep 2
 #var
 if [ ! $DEFUND_NODENAME ]; then
 read -p "Enter node name: " DEFUND_NODENAME
