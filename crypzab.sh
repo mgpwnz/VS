@@ -71,7 +71,7 @@ bash $HOME/defund/devtools/optimize.sh
 wget -O $HOME/.defund/config/genesis.json https://raw.githubusercontent.com/defund-labs/testnet/main/orbit-alpha-1/genesis.json
 defundd tendermint unsafe-reset-all
 #wget -O $HOME/.defund/config/addrbook.json https://api.nodes.guru/defund_addrbook.json
-
+cd $HOME
 #service
 echo "[Unit]
 Description=DeFund Node
