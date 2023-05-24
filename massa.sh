@@ -34,8 +34,6 @@ if [ -d $HOME/massa/ ]; then
 			tar -xvf $HOME/massa.tar.gz
 			rm -rf $HOME/massa.tar.gz
 			chmod +x $HOME/massa/massa-node/massa-node $HOME/massa/massa-client/massa-client
-			. <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
-			replace_bootstraps
 			sudo tee <<EOF >/dev/null /etc/systemd/system/massad.service
 [Unit]
 Description=Massa Node
@@ -54,7 +52,6 @@ WantedBy=multi-user.target
 EOF
 			sudo systemctl enable massad
 			sudo systemctl daemon-reload
-			open_ports
 			cd $HOME/massa/massa-client/
 			if [ ! -d $HOME/massa_backup ]; then
 				./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
