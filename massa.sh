@@ -80,6 +80,7 @@ EOF
 		fi
 	fi
 echo Done!
+fi
 break
 ;;
 
