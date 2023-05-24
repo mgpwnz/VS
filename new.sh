@@ -27,6 +27,14 @@ while test $# -gt 0; do
 	esac
 done
 # change config
+config() {
+    sudo systemctl stop massad
+    sudo tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
+[protocol]
+routable_ip = "`wget -qO- eth0.me`"
+EOF
+	sudo systemctl restart massad
+}
 install() {
         if [ ! -n "$massa_password" ]; then
 		echo Create password and save it in the variable!
@@ -68,6 +76,7 @@ WantedBy=multi-user.target
 EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
+            config
             cd $HOME/massa/massa-client/
                 if [ ! -d $HOME/massa_backup ]; then
 				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
@@ -132,6 +141,7 @@ EOF
                 sudo systemctl enable massad
                 sudo systemctl daemon-reload
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
+                config
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
             else
