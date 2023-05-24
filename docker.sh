@@ -1,4 +1,6 @@
 #!/bin/bash
+#Logo
+sleep 1 && curl -s https://raw.githubusercontent.com/mgpwnz/VS/main/logo.sh | bash && sleep 4
 #docker + compose
 touch $HOME/.bash_profile
 	cd
@@ -23,4 +25,4 @@ touch $HOME/.bash_profile
 		sudo chmod +x /usr/bin/docker-compose
 		. $HOME/.bash_profile
 	fi
-echo -e "\e[1m\e[32m2Ready\e[0m"
+echo -e "\e[1m\e[32mInstalled\e[0m"
