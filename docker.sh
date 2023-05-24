@@ -1,7 +1,4 @@
 #!/bin/bash
-#Logo
-clear
-sleep 1 && curl -s https://raw.githubusercontent.com/mgpwnz/VS/main/logo.sh | bash && sleep 4
 #docker + compose
 touch $HOME/.bash_profile
 	cd
