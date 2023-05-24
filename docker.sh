@@ -14,7 +14,7 @@ touch $HOME/.bash_profile
 		docker_version=`apt-cache madison docker-ce | grep -oPm1 "(?<=docker-ce \| )([^_]+)(?= \| https)"`
 		sudo apt install docker-ce="$docker_version" docker-ce-cli="$docker_version" containerd.io -y
 	fi
-	if ! docker-compose --version; then
+	if ! docker compose version; then
 		sudo apt update
 		sudo apt upgrade -y
 		sudo apt install wget jq -y
