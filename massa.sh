@@ -17,7 +17,8 @@ echo "============================================================"
 echo "Install start"
 echo "============================================================"
 
-if [ -d $HOME/massa/ ]; then
+install() { 
+    if [ -d $HOME/massa/ ]; then
 		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/massa_update.sh)
 	else 
         if [ ! -n "$massa_password" ]; then
@@ -71,16 +72,14 @@ EOF
 				sudo systemctl restart massad
 				sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
 			fi
-			
 			cd
-			
+			echo Done!
 		else
 			rm -rf $HOME/massa.tar.gz
 			echo Archive with binary downloaded unsuccessfully!
 		fi
 	fi
-echo Done!
-fi
+}
 break
 ;;
 
