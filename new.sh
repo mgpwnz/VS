@@ -143,7 +143,6 @@ EOF
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
-                . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
             else
                 echo Archive with binary downloaded unsuccessfully!
             fi
