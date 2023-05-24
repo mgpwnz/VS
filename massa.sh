@@ -16,9 +16,8 @@ select opt in "${options[@]}"
 echo "============================================================"
 echo "Install start"
 echo "============================================================"
-
-install() { 
-    if [ -d $HOME/massa/ ]; then
+ 
+if [ -d $HOME/massa/ ]; then
 		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/massa_update.sh)
 	else 
         if [ ! -n "$massa_password" ]; then
@@ -79,7 +78,7 @@ EOF
 			echo Archive with binary downloaded unsuccessfully!
 		fi
 	fi
-}
+
 break
 ;;
 
