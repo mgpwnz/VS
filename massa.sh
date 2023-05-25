@@ -22,7 +22,7 @@ while test $# -gt 0; do
             shift
             ;;
         -mw|--massa_wallet)
-            function="uninstall"
+            function="massa_wallet"
             shift
             ;;
         *|--)
