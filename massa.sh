@@ -222,7 +222,7 @@ echo "Done"
 massa_wallet(){
 cd $HOME/massa/massa-client
 #Set variables
-printf_n=$(printf "$1\n")
+printf_n(){ printf "$1\n" "${@:2}"; }
 wallet_info=`./massa-client -p "$massa_password" -j wallet_info`
 	local main_address=`jq -r "[.[]] | .[0].address_info.address" <<< "$wallet_info"`
 	if [ "$raw_output" = "true" ]; then
