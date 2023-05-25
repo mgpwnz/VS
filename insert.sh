@@ -74,4 +74,26 @@ node_testnet_rewards_program_ownership_proof() {
 	local resp=`./massa-client -p "$massa_password" -j node_testnet_rewards_program_ownership_proof "$main_address" "$discord_id" | jq -r`
 	echo Discord боту наступне: "$resp"
 }
+# Actions
+sudo apt install jq bc -y &>/dev/null
+if [ ! -n "$massa_password" ]; then
+	echo Введите пароль
+	read -p "Enter passwd: " massa_password
+	echo 'export massa_password='${massa_password} >> $HOME/.bash_profile
+fi
+if [ ! -n "$massa_password" ]; then
+	printf_n "Не існує змінної з паролем"
+	return 1 2>/dev/null; exit 1
+fi
+cd $HOME/massa/massa-client/
+if grep -q "wrong password" <<< `./massa-client -p "$massa_password" 2>&1`; then
+	echo Невірний пароль
+	return 1 2>/dev/null; exit 1
+fi
+
+if grep -q "check if your node is running" <<< `./massa-client -p "$massa_password" get_status`; then
+	echo Нода не працює! \nПодивитися лог: massa_log
+else
+	if grep -q "$action" <<< " wallet_info  node_start_staking node_testnet_rewards_program_ownership_proof"; then $action; else other "$@"; fi
+fi
 cd
