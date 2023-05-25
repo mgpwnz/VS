@@ -77,6 +77,7 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
+            . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
             cd $HOME/massa/massa-client/
                 if [ ! -d $HOME/massa_backup ]; then
 				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
@@ -140,6 +141,7 @@ WantedBy=multi-user.target
 EOF
                 sudo systemctl enable massad
                 sudo systemctl daemon-reload
+                . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
