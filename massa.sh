@@ -100,7 +100,7 @@ EOF
             echo The node was started!
             else
                 rm -rf $HOME/massa.tar.gz
-                echo Archive with binary downloaded unsuccessfully!
+                echo Archive is not downloaded!
             fi
         fi
 }
@@ -146,7 +146,7 @@ EOF
                 config
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
             else
-                echo Archive with binary downloaded unsuccessfully!
+                echo Archive is not downloaded!
             fi
             rm -rf $HOME/massa.tar.gz
 }
