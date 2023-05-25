@@ -64,7 +64,6 @@ wallet_info() {
 			printf_n "Active ROLLs:" "$active_rolls"
 			printf_n
 		done
-	fi
 }
 node_testnet_rewards_program_ownership_proof() {
 	local wallet_info=`./massa-client -p "$massa_password" -j wallet_info`
