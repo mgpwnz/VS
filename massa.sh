@@ -21,10 +21,6 @@ while test $# -gt 0; do
             function="uninstall"
             shift
             ;;
-        -mw|--massa_wallet)
-            function="massa_wallet"
-            shift
-            ;;
         *|--)
 		break
 		;;
@@ -219,47 +215,7 @@ $massa_password
 EOF
 echo "Done"
 }
-massa_wallet(){
-cd $HOME/massa/massa-client
-#Set variables
-printf_n(){ printf "$1\n" "${@:2}"; }
-wallet_info=`./massa-client -p "$massa_password" -j wallet_info`
-	local main_address=`jq -r "[.[]] | .[0].address_info.address" <<< "$wallet_info"`
-	if [ "$raw_output" = "true" ]; then
-		printf_n "`jq -r "[.[]]" <<< "$wallet_info"`"
-	else
-		local staking_addresses=`./massa-client -p "$massa_password" -j node_get_staking_addresses`
-		local wallets=`jq -r "to_entries[]" <<< "$wallet_info" | tr -d '[:space:]' | sed 's%}{%} {%g'`
-		printf_n
-		for wallet in $wallets; do
-			local address=`jq -r ".key" <<< "$wallet"`
-			printf "1" "$address"
-			if [ "$address" = "$main_address" ]; then
-				printf_n "2"
-			else
-				printf_n
-			fi
-			if [ "$secret_keys" = "true" ]; then
-				local secret_key=`jq -r ".value.keypair.secret_key" <<< "$wallet"`
-				printf_n "3" "$secret_key"
-			fi
-			local public_key=`jq -r ".value.keypair.public_key" <<< "$wallet"`
-			printf_n "4" "$public_key"
-			if grep -q "$address" <<< "$staking_addresses"; then
-				printf_n "5"
-			else
-				printf_n "6"
-			fi
-			local balance=`jq -r ".value.address_info.candidate_balance" <<< "$wallet"`
-			printf_n "7" "$balance"
-			local total_rolls=`jq -r ".value.address_info.candidate_rolls" <<< "$wallet"`
-			printf_n "8" "$total_rolls"
-			local active_rolls=`jq -r ".value.address_info.active_rolls" <<< "$wallet"`
-			printf_n "9" "$active_rolls"
-			printf_n
-		done
-	fi
-}
+
 uninstall() {
 cd /root
 sudo rm $HOME/rollsup.sh $HOME/massapasswd
