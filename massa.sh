@@ -220,7 +220,25 @@ uninstall() {
 cd /root
 sudo rm $HOME/rollsup.sh $HOME/massapasswd
 sudo rm /etc/cron.d/massarolls
-echo "Done"
+sudo systemctl stop massad
+	if [ ! -d $HOME/massa_backup ]; then
+		mkdir $HOME/massa_backup
+		sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+		sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
+	fi
+	if [ -f $HOME/massa_backup/wallet.dat ] && [ -f $HOME/massa_backup/node_privkey.key ]; then
+		rm -rf $HOME/massa/ /etc/systemd/system/massa.service /etc/systemd/system/massad.service
+		sudo systemctl daemon-reload
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_log -da
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_client -da
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_cli_client -da
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_node_info -da
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_wallet_info -da
+		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_buy_rolls -da
+        echo "Done"
+	else
+		echo No backup of the necessary files was found, delete the node manually!
+	fi	
 }
 # Actions
 sudo apt install net-tools wget -y &>/dev/null
