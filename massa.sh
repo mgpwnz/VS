@@ -35,10 +35,9 @@ routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
     cd $HOME/massa/massa-client/
-            echo test1
                 if [ ! -d $HOME/massa_backup ]; then
 				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
-                    echo test2
+                    echo generate Secret key
 				    mkdir -p $HOME/massa_backup
 				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
                     . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
