@@ -34,7 +34,6 @@ config() {
 routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
-    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/ports_opening.sh) 31244 31245
     . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
 }
 secret() {
