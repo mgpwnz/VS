@@ -35,7 +35,7 @@ routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
 }
-secrect() {
+secret() {
     cd $HOME/massa/massa-client/
     if [ ! -d $HOME/massa_backup ]; then
     ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
@@ -99,7 +99,7 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
-            secrect
+            secret
             echo The node was started!
             else
                 rm -rf $HOME/massa.tar.gz
