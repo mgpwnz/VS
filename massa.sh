@@ -77,12 +77,12 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
-            . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
             cd $HOME/massa/massa-client/
                 if [ ! -d $HOME/massa_backup ]; then
-				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
+				    ./massa-client -p "$massa_password" wallet_generate_secret_key
 				    mkdir -p $HOME/massa_backup
 				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+                    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
 				    while true; do
 					    if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
 						    sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
@@ -180,7 +180,6 @@ sleep 1
  # Create script 
 sudo tee /root/rollsup.sh > /dev/null <<EOF
 #!/bin/sh
-#Версия 0.14
 cd /root/massa/massa-client
 #Set variables
 catt=/usr/bin/cat
