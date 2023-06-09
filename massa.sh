@@ -56,7 +56,6 @@ secret() {
 		systemctl restart massad
 		cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
 	fi
-    echo done
     cd
 }
 install() {
