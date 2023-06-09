@@ -36,7 +36,7 @@ EOF
 	sudo systemctl restart massad
     cd $HOME/massa/massa-client/
                 if [ ! -d $HOME/massa_backup ]; then
-				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
+				    ./massa-client -p "$massa_password" wallet_generate_secret_key 
                     echo generate Secret key
 				    mkdir -p $HOME/massa_backup
 				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
