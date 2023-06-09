@@ -34,6 +34,28 @@ config() {
 routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
+    cd $HOME/massa/massa-client/
+            echo 1
+                if [ ! -d $HOME/massa_backup ]; then
+				    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
+                    echo 2
+				    mkdir -p $HOME/massa_backup
+				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+                    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
+				    while true; do
+					    if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
+						    sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
+						    break
+					    else
+						    sleep 5
+					    fi
+				    done
+                else
+				    sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
+				    sudo systemctl restart massad
+				    sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
+			    fi
+            cd
 }
 install() {
         if [ ! -n "$massa_password" ]; then
@@ -77,28 +99,6 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
-            cd $HOME/massa/massa-client/
-            echo 1
-                if [ ! -d $HOME/massa_backup ]; then
-				    ./massa-client  wallet_generate_secret_key
-                    echo 2
-				    mkdir -p $HOME/massa_backup
-				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
-                    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
-				    while true; do
-					    if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
-						    sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
-						    break
-					    else
-						    sleep 5
-					    fi
-				    done
-                else
-				    sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
-				    sudo systemctl restart massad
-				    sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
-			    fi
-            cd
             echo The node was started!
             else
                 rm -rf $HOME/massa.tar.gz
