@@ -101,6 +101,7 @@ EOF
             config
             secret
             echo The node was started!
+            ipv6
             else
                 rm -rf $HOME/massa.tar.gz
                 echo Archive is not downloaded!
@@ -147,6 +148,7 @@ EOF
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
+                ipv6
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
             else
                 echo Archive is not downloaded!
