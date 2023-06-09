@@ -100,7 +100,7 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
-            secret
+#            secret
             echo The node was started!
             else
                 rm -rf $HOME/massa.tar.gz
@@ -110,13 +110,13 @@ EOF
 }
 #UPDATE
 update() {
-            mkdir -p $HOME/massa_backup
-            if [ ! -f $HOME/massa_backup/wallet.dat ]; then
-		        sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
-	        fi
-	        if [ ! -f $HOME/massa_backup/node_privkey.key ]; then
-		        sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
-	        fi
+#            mkdir -p $HOME/massa_backup
+#            if [ ! -f $HOME/massa_backup/wallet.dat ]; then
+#		        sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+#	        fi
+#	        if [ ! -f $HOME/massa_backup/node_privkey.key ]; then
+#		        sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
+#	        fi
             if grep -q "wrong password" <<< `cd $HOME/massa/massa-client/; ./massa-client -p "$massa_password" 2>&1; cd`; then
                 echo Wrong password!
                 return 1 2>/dev/null; exit 1
@@ -146,9 +146,9 @@ EOF
                 sudo systemctl enable massad
                 sudo systemctl daemon-reload
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
-                sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
+#                sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
-                sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
+#                sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
             else
                 echo Archive is not downloaded!
             fi
