@@ -35,6 +35,28 @@ routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
 }
+secrect() {
+    cd $HOME/massa/massa-client/
+    if [ ! -d $HOME/massa_backup ]; then
+    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
+    mkdir -p $HOME/massa_backup
+	cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+        while true; do
+					if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
+						sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
+						break
+					else
+						sleep 2
+					fi
+				done
+    else
+		cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
+		systemctl restart massad
+		cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
+	fi
+    echo done
+    cd
+}
 install() {
         if [ ! -n "$massa_password" ]; then
 		echo Create password and save it in the variable!
@@ -77,6 +99,7 @@ EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
             config
+            secrect
             echo The node was started!
             else
                 rm -rf $HOME/massa.tar.gz
