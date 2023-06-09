@@ -34,6 +34,7 @@ config() {
 routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
+    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
 }
 secret() {
     cd $HOME/massa/massa-client/
