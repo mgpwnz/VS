@@ -80,7 +80,7 @@ EOF
             cd $HOME/massa/massa-client/
             echo 1
                 if [ ! -d $HOME/massa_backup ]; then
-				    cd $HOME/massa/massa-client/ && ./massa-client -p "$massa_password" wallet_generate_secret_key
+				    ./massa-client  wallet_generate_secret_key
                     echo 2
 				    mkdir -p $HOME/massa_backup
 				    sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
