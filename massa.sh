@@ -102,6 +102,7 @@ EOF
             secret
             echo The node was started!
             ipv6
+            autobuy
             else
                 rm -rf $HOME/massa.tar.gz
                 echo Archive is not downloaded!
