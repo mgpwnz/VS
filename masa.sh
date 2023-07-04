@@ -9,8 +9,8 @@ while test $# -gt 0; do
             function="ipv6"
             shift
             ;;
-        v6|--v6)
-            function="v6"
+        v6|--version6)
+            function="version6"
             shift
             ;;
         -cb|--contabo)
@@ -40,7 +40,7 @@ EOF
 	sudo systemctl restart massad
     . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
 }
-config2() {
+configv6() {
     sudo systemctl stop massad
     ipv6=$(ifconfig | grep "scopeid 0x0<global>" | awk '{ print $2 }')
     sudo tee <<EOF >/dev/null $HOME/massa/massa-node/config/config.toml
@@ -182,9 +182,12 @@ ipv6() {
     systemctl restart massad
 fi
 }
-v6() {
+##########################
+#       VER. IPV6        #
+##########################
+version6() {
 if [ -d $HOME/massa/ ]; then
-            update
+            updatev6
         else
             if [ ! -n "$massa_password" ]; then
 		    echo Create password and save it in the variable!
@@ -218,7 +221,7 @@ WantedBy=multi-user.target
 EOF
             sudo systemctl enable massad
 			sudo systemctl daemon-reload
-            config2
+            configv6
             secret
             autobuy
             echo The node was started!
@@ -233,7 +236,7 @@ EOF
 
 }
 # config ipv6
-update2() {
+updatev6() {
             mkdir -p $HOME/massa_backup
             if [ ! -f $HOME/massa_backup/wallet.dat ]; then
 		        sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
@@ -271,7 +274,7 @@ EOF
                 sudo systemctl daemon-reload
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
-                config2
+                configv6
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
             else
                 echo Archive is not downloaded!
