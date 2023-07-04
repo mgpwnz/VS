@@ -38,31 +38,28 @@ EOF
 }
 secret() {
     cd $HOME/massa/massa-client/
-    if [ ! -d $HOME/massa_backup ]; then
-    ./massa-client -p "$massa_password" wallet_generate_secret_key &>/dev/null
-    mkdir -p $HOME/massa_backup
-	cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
-        while true; do
+    echo Waiting for the node to start
+   if [ ! -d $HOME/massa_backup ]; then
+				while true; do
 					if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
+						./massa-client -p "$massa_password" wallet_generate_secret_key
+						mkdir -p $HOME/massa_backup
+						sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
 						sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
 						break
 					else
-						sleep 2
+						sleep 5
 					fi
 				done
-    else
-		cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
-		systemctl restart massad
-		cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
-	fi
+				
+			else
+				sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
+				sudo systemctl restart massad
+				sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
+			fi
     cd
 }
 install() {
-        if [ ! -n "$massa_password" ]; then
-		echo Create password and save it in the variable!
-		read -p "Enter passwd: " massa_password
-		echo 'export massa_password='${massa_password} >> $HOME/.bash_profile
-	    fi
         if [ -d $HOME/massa/ ]; then
             update
         else
@@ -101,7 +98,7 @@ EOF
             config
             secret
             echo The node was started!
-            ipv6
+            cat $HOME/massa/massa-node/config/config.toml
             autobuy
             else
                 rm -rf $HOME/massa.tar.gz
@@ -149,7 +146,7 @@ EOF
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
-                ipv6
+                cat $HOME/massa/massa-node/config/config.toml
                 sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
             else
                 echo Archive is not downloaded!

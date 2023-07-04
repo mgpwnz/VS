@@ -5,12 +5,12 @@ function="version6"
 option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
 while test $# -gt 0; do
         case "$1" in
-        v6|--version6)
-            function="version6"
-            shift
-            ;;
         -ab|--autobuy)   
             function="autobuy"
+            shift
+            ;;
+        -cb|--contabo)
+            function="contabo"
             shift
             ;;
         -un|--uninstall)
@@ -155,6 +155,12 @@ EOF
                 echo Archive is not downloaded!
             fi
             rm -rf $HOME/massa.tar.gz
+}
+# Change plan
+contabo() {
+    
+    sed -i "/net.ipv6.conf.all.disable_ipv6.*/d" /etc/sysctl.conf && sysctl -q -p && echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6 && sed -i "s/#//" /etc/netplan/01-netcfg.yaml && netplan generate && netplan apply
+    echo " Ipv6 Enable"
 }
 
 # Autobuy rolls
