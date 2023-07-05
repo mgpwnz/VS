@@ -10,5 +10,5 @@ while true; do
   sleep 1
   fi 
    #wait 
-  sleep 600
+  sleep 900
 done
