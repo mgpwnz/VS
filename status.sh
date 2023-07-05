@@ -4,11 +4,9 @@ while true; do
    if [[ "$status" == *"top"* ]]
    then 
   docker exec -it shardeum-dashboard operator-cli start 
-  sleep 20 
-  status=$(docker exec -it shardeum-dashboard operator-cli status | awk '/state:/ {print $NF}')
-  else
-  sleep 1
-  fi 
+  sleep 10 
+  status=$(docker exec -it shardeum-dashboard operator-cli status | awk '/state:/ {print $NF}')  
+   fi 
 done
 
 
