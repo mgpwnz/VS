@@ -1,6 +1,6 @@
 #!/bin/bash 
 #create script
-wget -q -O status.sh https://raw.githubusercontent.com/mgpwnz/VS/main/status.sh && chmod +x status.sh && ./status.sh
+wget -q -O status.sh https://raw.githubusercontent.com/mgpwnz/VS/main/status.sh && chmod +x status.sh
 sleep 1
 #Add cron
 printf "SHELL=/bin/bash
