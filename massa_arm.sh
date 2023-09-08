@@ -38,7 +38,8 @@ secret() {
 					if [ -f $HOME/massa/massa-node/config/node_privkey.key ]; then
 						./massa-client -p "$massa_password" wallet_generate_secret_key
 						mkdir -p $HOME/massa_backup
-						sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+#						sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+						sudo cp -r $HOME/massa/massa-client/wallets/ $HOME/massa_backup/
 						sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
 						break
 					else
@@ -49,7 +50,8 @@ secret() {
 			else
 				sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
 				sudo systemctl restart massad
-				sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
+#				sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat	
+				sudo cp -r $HOME/massa_backup/wallets/ $HOME/massa/massa-client/
 			fi
     cd
 }
@@ -110,8 +112,9 @@ EOF
 # config ipv6
 updatev6() {
             mkdir -p $HOME/massa_backup
-            if [ ! -f $HOME/massa_backup/wallet.dat ]; then
-		        sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+            if [ ! -d $HOME/massa_backup/wallets/ ]; then
+#		        sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+				sudo cp -r $HOME/massa/massa-client/wallets/ $HOME/massa_backup/
 	        fi
 	        if [ ! -f $HOME/massa_backup/node_privkey.key ]; then
 		        sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
@@ -147,7 +150,8 @@ EOF
                 . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 configv6
-                sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
+#                sudo cp $HOME/massa_backup/wallet.dat $HOME/massa/massa-client/wallet.dat
+				 sudo cp -r $HOME/massa_backup/wallets/ $HOME/massa/massa-client/
             else
                 echo Archive is not downloaded!
             fi
@@ -205,7 +209,8 @@ sudo rm /etc/cron.d/massarolls
 sudo systemctl stop massad
 	if [ ! -d $HOME/massa_backup ]; then
 		mkdir $HOME/massa_backup
-		sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+#		sudo cp $HOME/massa/massa-client/wallet.dat $HOME/massa_backup/wallet.dat
+        sudo cp -r $HOME/massa/massa-client/wallets/ $HOME/massa_backup/
 		sudo cp $HOME/massa/massa-node/config/node_privkey.key $HOME/massa_backup/node_privkey.key
 	fi
 	if [ -f $HOME/massa_backup/wallet.dat ] && [ -f $HOME/massa_backup/node_privkey.key ]; then
