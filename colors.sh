@@ -123,11 +123,6 @@ while test $# -gt 0; do
 		echo -e "│ Gray   │ ${C_DGy}Example${RES} │ \${C_DGy} │  │ Gray   │ ${Ba_Gy}Example${RES} │ \${Ba_Gy} │"
 		echo -e "└────────┴─────────┴──────────┘  └────────┴─────────┴──────────┘"
 		echo
-		echo -e "${C_LGn}Useful URLs${RES}:"
-		echo -e "https://github.com/SecorD0/utils/blob/main/colors.sh - script URL"
-		echo -e "https://t.me/OnePackage — noderun and tech community"
-		echo -e "https://learning.1package.io — guides and articles"
-		echo -e "https://teletype.in/@letskynode — guides and articles"
 		echo
 		return 0 2>/dev/null; exit 0
 		;;
