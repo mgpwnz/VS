@@ -42,143 +42,143 @@ done
 
 # Texts
 if [ "$language" = "RU" ]; then
-	t_ni1="\nID ноды:                ${C_LP}%s${RES}"
-	t_ni2="Версия ноды:            ${C_LP}%s${RES}\n"
+	t_ni1="\nID ноды:                ${C_Y}%s${RES}"
+	t_ni2="Версия ноды:            ${C_Y}%s${RES}\n"
 	
-	t_ni3="Текущий цикл:           ${C_LP}%d${RES}"
-	#t_ni4="Запланировано слотов:   ${C_LP}%d${RES}"
-	#t_ni5="Запланировано слотов:   ${C_R}0${RES} (попробуйте позже ${C_LP}ещё раз${RES})"
+	t_ni3="Текущий цикл:           ${C_Y}%d${RES}"
+	#t_ni4="Запланировано слотов:   ${C_Y}%d${RES}"
+	#t_ni5="Запланировано слотов:   ${C_R}0${RES} (попробуйте позже ${C_Y}ещё раз${RES})"
 	
-	t_ni6="Порты открыты:          ${C_LP}да${RES}"
+	t_ni6="Порты открыты:          ${C_Y}да${RES}"
 	t_ni7="Порты открыты:          ${C_R}нет${RES}"
-	t_ni8="Входящих подключений:   ${C_LP}%d${RES}"
-	t_ni9="Исходящих подключений:  ${C_LP}%d${RES}\n\n"
+	t_ni8="Входящих подключений:   ${C_Y}%d${RES}"
+	t_ni9="Исходящих подключений:  ${C_Y}%d${RES}\n\n"
 	t_ni10="   Кошельки"
 	
 	
-	t_wi1="Адрес кошелька:   ${C_LP}%s${RES}"
-	t_wi2=" (${C_LP}основной${RES})"
-	t_wi3="Секретный ключ:   ${C_LP}%s${RES} (${C_R}никому не показывать${RES})"
-	t_wi4="Публичный ключ:   ${C_LP}%s${RES}"
-	t_wi5="Зарегистрирован\nдля стейкинга:    ${C_LP}да${RES}"
+	t_wi1="Адрес кошелька:   ${C_Y}%s${RES}"
+	t_wi2=" (${C_Y}основной${RES})"
+	t_wi3="Секретный ключ:   ${C_Y}%s${RES} (${C_R}никому не показывать${RES})"
+	t_wi4="Публичный ключ:   ${C_Y}%s${RES}"
+	t_wi5="Зарегистрирован\nдля стейкинга:    ${C_Y}да${RES}"
 	t_wi6="Зарегистрирован\nдля стейкинга:    ${C_R}нет${RES}"
-	t_wi7="Баланс:           ${C_LP}%f${RES}"
-	t_wi8="Всего ROLL'ов:    ${C_LP}%d${RES}"
-	t_wi9="Активных ROLL'ов: ${C_LP}%d${RES}"
+	t_wi7="Баланс:           ${C_Y}%f${RES}"
+	t_wi8="Всего ROLL'ов:    ${C_Y}%d${RES}"
+	t_wi9="Активных ROLL'ов: ${C_Y}%d${RES}"
 	
 	
 	t_br1="${C_R}Баланс менее 100 токенов${RES}"
-	t_br2="Куплено ROLL'ов: ${C_LP}%d${RES}"
-	t_br3="Введите количество ROLL'ов (максимально ${C_LP}%d${RES}): "
+	t_br2="Куплено ROLL'ов: ${C_Y}%d${RES}"
+	t_br3="Введите количество ROLL'ов (максимально ${C_Y}%d${RES}): "
 	t_br4="${C_R}Недостаточно токенов для покупки${RES}"
 	
 	
 	t_rpk="${C_R}Не удалось зарегистрировать ключ для стейкинга${RES}"
 	
 	
-	t_ctrp1="${C_LP}Введите Discord ID:${RES} "
-	t_ctrp2="\nОтправьте Discord боту следующее:\n${C_LP}%s${RES}\n"
+	t_ctrp1="${C_Y}Введите Discord ID:${RES} "
+	t_ctrp2="\nОтправьте Discord боту следующее:\n${C_Y}%s${RES}\n"
 	
 	
-	t_done="${C_LP}Готово!${RES}"
+	t_done="${C_Y}Готово!${RES}"
 	t_err="${C_R}Нет такого действия!${RES}"
 	t_err_mp1="\n${C_R}Не существует переменной massa_password с паролем, введите его для сохранения в переменной!${RES}"
 	t_err_mp2="\n${C_R}Не существует переменной massa_password с паролем!${RES}\n"
 	t_err_wp="\n${C_R}Неверный пароль!${RES}\n"
-	t_err_nwn="\n${C_R}Нода не работает!${RES}\nПосмотреть лог: ${C_LP}massa_log${RES}\n"
+	t_err_nwn="\n${C_R}Нода не работает!${RES}\nПосмотреть лог: ${C_Y}massa_log${RES}\n"
 
 elif [ "$language" = "UA" ]; then
-	t_ni1="\nID ноди:              ${C_LP}%s${RES}"
-	t_ni2="Версія ноди:          ${C_LP}%s${RES}\n"
+	t_ni1="\nID ноди:              ${C_Y}%s${RES}"
+	t_ni2="Версія ноди:          ${C_Y}%s${RES}\n"
 	
-	t_ni3="Поточний цикл:        ${C_LP}%d${RES}"
-	#t_ni4="Заплановано слотів:   ${C_LP}%d${RES}"
-	#t_ni5="Заплановано слотів:   ${C_R}0${RES} (спробуйте пізніше ${C_LP}ще раз${RES})"
+	t_ni3="Поточний цикл:        ${C_Y}%d${RES}"
+	#t_ni4="Заплановано слотів:   ${C_Y}%d${RES}"
+	#t_ni5="Заплановано слотів:   ${C_R}0${RES} (спробуйте пізніше ${C_Y}ще раз${RES})"
 	
-	t_ni6="Порти відкриті:       ${C_LP}так${RES}"
+	t_ni6="Порти відкриті:       ${C_Y}так${RES}"
 	t_ni7="Порти відкриті:       ${C_R}ні${RES}"
-	t_ni8="Вхідних підключень:   ${C_LP}%d${RES}"
-	t_ni9="Вихідних підключень:  ${C_LP}%d${RES}\n\n"
+	t_ni8="Вхідних підключень:   ${C_Y}%d${RES}"
+	t_ni9="Вихідних підключень:  ${C_Y}%d${RES}\n\n"
 	t_ni10="   Гаманці"
 	
 	
-	t_wi1="Адреса гаманця:    ${C_LP}%s${RES}"
-	t_wi2=" (${C_LP}основний${RES})"
-	t_wi3="Приватний ключ:    ${C_LP}%s${RES} (${C_R}нікому не показувати${RES})"
-	t_wi4="Публічний ключ:    ${C_LP}%s${RES}"
-	t_wi5="Зареєстрований\nдля стейкінгу:     ${C_LP}так${RES}"
+	t_wi1="Адреса гаманця:    ${C_Y}%s${RES}"
+	t_wi2=" (${C_Y}основний${RES})"
+	t_wi3="Приватний ключ:    ${C_Y}%s${RES} (${C_R}нікому не показувати${RES})"
+	t_wi4="Публічний ключ:    ${C_Y}%s${RES}"
+	t_wi5="Зареєстрований\nдля стейкінгу:     ${C_Y}так${RES}"
 	t_wi6="Зареєстрований\nдля стейкінгу:     ${C_R}ні${RES}"
-	t_wi7="Баланс:            ${C_LP}%f${RES}"
-	t_wi8="Загалом ROLL'ів:   ${C_LP}%d${RES}"
-	t_wi9="Активних ROLL'ів:  ${C_LP}%d${RES}"
+	t_wi7="Баланс:            ${C_Y}%f${RES}"
+	t_wi8="Загалом ROLL'ів:   ${C_Y}%d${RES}"
+	t_wi9="Активних ROLL'ів:  ${C_Y}%d${RES}"
 	
 	
 	t_br1="${C_R}Баланс менш ніж 100 токенів${RES}"
-	t_br2="Куплено ROLL'ів: ${C_LP}%d${RES}"
-	t_br3="Введіть кількість ROLL'ів (максимально ${C_LP}%d${RES}): "
+	t_br2="Куплено ROLL'ів: ${C_Y}%d${RES}"
+	t_br3="Введіть кількість ROLL'ів (максимально ${C_Y}%d${RES}): "
 	t_br4="${C_R}Недостатньо токенів для придбання${RES}"
 	
 	
 	t_rpk="${C_R}Не вдалося зареєструвати ключ для стейкінгу${RES}"
 	
 	
-	t_ctrp1="${C_LP}Введіть Discord ID:${RES} "
-	t_ctrp2="\nНадішліть Discord боту наступне:\n${C_LP}%s${RES}\n"
+	t_ctrp1="${C_Y}Введіть Discord ID:${RES} "
+	t_ctrp2="\nНадішліть Discord боту наступне:\n${C_Y}%s${RES}\n"
 	
 	
-	t_done="${C_LP}Готово!${RES}"
+	t_done="${C_Y}Готово!${RES}"
 	t_err="${C_R}Немає такої дії!${RES}"
 	t_err_mp1="\n${C_R}Не існує змінної massa_password з паролем, введіть його для збереження у змінній!${RES}"
 	t_err_mp2="\n${C_R}Не існує змінної massa_password з паролем!${RES}\n"
 	t_err_wp="\n${C_R}Невірний пароль!${RES}\n"
-	t_err_nwn="\n${C_R}Нода не працює!${RES}\nПодивитися лог: ${C_LP}massa_log${RES}\n"
+	t_err_nwn="\n${C_R}Нода не працює!${RES}\nПодивитися лог: ${C_Y}massa_log${RES}\n"
 	
 
 else
-	t_ni1="\nNode ID:                ${C_LP}%s${RES}"
-	t_ni2="Node version:           ${C_LP}%s${RES}\n"
+	t_ni1="\nNode ID:                ${C_Y}%s${RES}"
+	t_ni2="Node version:           ${C_Y}%s${RES}\n"
 	
-	t_ni3="Currnet cycle:          ${C_LP}%d${RES}"
-	#t_ni4="Draws scheduled:        ${C_LP}%d${RES}"
-	#t_ni5="Draws scheduled:        ${C_R}0${RES} (try ${C_LP}again later${RES})"
+	t_ni3="Currnet cycle:          ${C_Y}%d${RES}"
+	#t_ni4="Draws scheduled:        ${C_Y}%d${RES}"
+	#t_ni5="Draws scheduled:        ${C_R}0${RES} (try ${C_Y}again later${RES})"
 	
-	t_ni6="Ports opened:           ${C_LP}yes${RES}"
+	t_ni6="Ports opened:           ${C_Y}yes${RES}"
 	t_ni7="Ports opened:           ${C_R}no${RES}"
-	t_ni8="Incoming connections:   ${C_LP}%d${RES}"
-	t_ni9="Outcoming connections:  ${C_LP}%d${RES}\n\n"
+	t_ni8="Incoming connections:   ${C_Y}%d${RES}"
+	t_ni9="Outcoming connections:  ${C_Y}%d${RES}\n\n"
 	t_ni10="   Wallets"
 	
 	
-	t_wi1="Wallet address:  ${C_LP}%s${RES}"
-	t_wi2=" (${C_LP}the main${RES})"
-	t_wi3="Secret key:     ${C_LP}%s${RES} (${C_R}don't show it to anyone${RES})"
-	t_wi4="Public key:      ${C_LP}%s${RES}"
-	t_wi5="Registered\nfor staking:     ${C_LP}yes${RES}"
+	t_wi1="Wallet address:  ${C_Y}%s${RES}"
+	t_wi2=" (${C_Y}the main${RES})"
+	t_wi3="Secret key:     ${C_Y}%s${RES} (${C_R}don't show it to anyone${RES})"
+	t_wi4="Public key:      ${C_Y}%s${RES}"
+	t_wi5="Registered\nfor staking:     ${C_Y}yes${RES}"
 	t_wi6="Registered\nfor staking:     ${C_R}no${RES}"
-	t_wi7="Balance:         ${C_LP}%f${RES}"
-	t_wi8="Total ROLLs:     ${C_LP}%d${RES}"
-	t_wi9="Active ROLLs:    ${C_LP}%d${RES}"
+	t_wi7="Balance:         ${C_Y}%f${RES}"
+	t_wi8="Total ROLLs:     ${C_Y}%d${RES}"
+	t_wi9="Active ROLLs:    ${C_Y}%d${RES}"
 	
 	
 	t_br1="${C_R}Balance is less than 100 tokens${RES}"
-	t_br2="${C_LP}%d${RES} ROLLs were bought"
-	t_br3="Enter a ROLL count (max ${C_LP}%d${RES}): "
+	t_br2="${C_Y}%d${RES} ROLLs were bought"
+	t_br3="Enter a ROLL count (max ${C_Y}%d${RES}): "
 	t_br4="${C_R}Not enough tokens for buying${RES}"
 	
 	
 	t_rpk="${C_R}Failed to register a key for staking!${RES}"
 	
 	
-	t_ctrp1="${C_LP}Enter a Discord ID:${RES} "
-	t_ctrp2="\nSend the following to Discord bot:\n${C_LP}%s${RES}\n"
+	t_ctrp1="${C_Y}Enter a Discord ID:${RES} "
+	t_ctrp2="\nSend the following to Discord bot:\n${C_Y}%s${RES}\n"
 	
 	
-	t_done="${C_LP}Done!${RES}"
+	t_done="${C_Y}Done!${RES}"
 	t_err="${C_R}There is no such action!${RES}"
 	t_err_mp1="\n${C_R}There is no massa_password variable with the password, enter it to save it in the variable!${RES}"
 	t_err_mp2="\n${C_R}There is no massa_password variable with the password!${RES}\n"
 	t_err_wp="\n${C_R}Wrong password!${RES}\n"
-	t_err_nwn="\n${C_R}Node isn't working!${RES}\nView the log: ${C_LP}massa_log${RES}\n"
+	t_err_nwn="\n${C_R}Node isn't working!${RES}\nView the log: ${C_Y}massa_log${RES}\n"
 fi
 
 # Functions
