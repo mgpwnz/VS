@@ -47,8 +47,6 @@ if [ "$language" = "UA" ]; then
 	t_ni2="Версія ноди:          ${C_Y}%s${RES}\n"
 	
 	t_ni3="Поточний цикл:        ${C_Y}%d${RES}"
-	#t_ni4="Заплановано слотів:   ${C_Y}%d${RES}"
-	#t_ni5="Заплановано слотів:   ${C_R}0${RES} (спробуйте пізніше ${C_Y}ще раз${RES})"
 	
 	t_ni6="Порти відкриті:       ${C_Y}так${RES}"
 	t_ni7="Порти відкриті:       ${C_R}ні${RES}"
@@ -107,12 +105,7 @@ node_info() {
 		
 		local current_cycle=`jq -r ".current_cycle" <<< "$node_info"`
 		printf_n "$t_ni3" "$current_cycle"
-		#local draws_count=`./massa-client -p "$massa_password" -j get_addresses "$main_address" | jq -r ".[0].block_draws | length" 2>/dev/null`
-		#if [ -n "$draws_count" ] && [ "$draws_count" -gt 0 ]; then
-		#	printf_n "$t_ni4" "$draws_count"
-		#else
-		#	printf_n "$t_ni5"
-		#fi
+		
 		printf_n
 		local opened_ports=`ss -tulpn | grep :3303`
 		if [ -n "$opened_ports" ]; then
