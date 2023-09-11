@@ -34,7 +34,7 @@ config() {
 routable_ip = "`wget -qO- eth0.me`"
 EOF
 	sudo systemctl restart massad
-    . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
+    . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variables.sh)
 }
 secret() {
     cd $HOME/massa/massa-client/
@@ -146,7 +146,7 @@ WantedBy=multi-user.target
 EOF
                 sudo systemctl enable massad
                 sudo systemctl daemon-reload
-                . <(wget -qO- https://raw.githubusercontent.com/SecorD0/Massa/main/insert_variables.sh)
+                . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variables.sh)
                 sudo cp $HOME/massa_backup/node_privkey.key $HOME/massa/massa-node/config/node_privkey.key
                 config
                 cat $HOME/massa/massa-node/config/config.toml
@@ -236,12 +236,12 @@ sudo systemctl stop massad
 	if [ -f $HOME/massa_backup/wallet.dat ] && [ -f $HOME/massa_backup/node_privkey.key ]; then
 		rm -rf $HOME/massa/ /etc/systemd/system/massa.service /etc/systemd/system/massad.service
 		sudo systemctl daemon-reload
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_log -da
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_client -da
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_cli_client -da
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_node_info -da
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_wallet_info -da
-		. <(wget -qO- https://raw.githubusercontent.com/SecorD0/utils/main/miscellaneous/insert_variable.sh) -n massa_buy_rolls -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_log -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_client -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_cli_client -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_node_info -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_wallet_info -da
+		. <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/insert_variable.sh) -n massa_buy_rolls -da
         echo "Done"
 	else
 		echo No backup of the necessary files was found, delete the node manually!
