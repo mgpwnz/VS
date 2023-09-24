@@ -1,7 +1,7 @@
 #!/bin/bash
 #docker + compose
 touch $HOME/.bash_profile
-	cd
+	cd $HOME
 	if ! docker --version; then
 		sudo apt update
 		sudo apt upgrade -y
