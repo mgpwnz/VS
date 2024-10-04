@@ -58,7 +58,20 @@ def check_status_and_restart_operator():
                     return False
                 else:
                     print(f"Current state: {line}")
-                    return True
+
+        # Перевіряємо статус GUI
+        gui_status_result = subprocess.run(
+            ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
+            capture_output=True,
+            text=True
+        )
+        
+        gui_output = gui_status_result.stdout
+        if "operator gui not running!" in gui_output:
+            print("GUI is not running, starting the GUI...")
+            start_gui()
+        
+        return True
     except subprocess.CalledProcessError as e:
         print(f"Error executing status command: {e}")
         return False
@@ -66,6 +79,7 @@ def check_status_and_restart_operator():
 def restart_operator():
     """Функція для запуску оператора."""
     try:
+        # Запускаємо оператор
         result = subprocess.run(
             ["docker", "exec", "shardeum-dashboard", "operator-cli", "start"],
             capture_output=True,
@@ -78,6 +92,22 @@ def restart_operator():
             print(f"Failed to start the operator: {result.stderr}")
     except subprocess.CalledProcessError as e:
         print(f"Error executing start command: {e}")
+
+def start_gui():
+    """Функція для запуску GUI."""
+    try:
+        # Запускаємо GUI
+        gui_result = subprocess.run(
+            ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "start"],
+            capture_output=True,
+            text=True
+        )
+        if gui_result.returncode == 0:
+            print("GUI started successfully!")
+        else:
+            print(f"Failed to start the GUI: {gui_result.stderr}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing GUI start command: {e}")
 
 def main():
     container_name = "shardeum-dashboard"
