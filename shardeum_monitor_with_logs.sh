@@ -3,7 +3,7 @@
 # === Налаштування системного сервісу та таймера для моніторингу Shardeum Dashboard з логами ===
 
 # Шлях до Python-скрипта, який ми будемо створювати
-SCRIPT_PATH="/usr/local/bin/check_shardeum_status.py"
+SCRIPT_PATH="$HOME/check_shardeum_status.py"
 LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
 
 # Створюємо Python-скрипт, який перевіряє контейнер та оператор
