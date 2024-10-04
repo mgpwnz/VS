@@ -3,8 +3,8 @@
 # === Налаштування системного сервісу та таймера для моніторингу Shardeum Dashboard з логами ===
 
 # Шлях до Python-скрипта, який ми будемо створювати
-SCRIPT_PATH="$HOME/check_shardeum_status.py"
-LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
+SCRIPT_PATH="/root/check_shardeum_status.py"
+LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
 
 # Створюємо Python-скрипт, який перевіряє контейнер та оператор
 cat << 'EOF' > $SCRIPT_PATH
@@ -109,9 +109,9 @@ After=docker.service
 Requires=docker.service
 
 [Service]
-ExecStart=/usr/bin/python3 $SCRIPT_PATH
-StandardOutput=append:$LOG_PATH
-StandardError=append:$LOG_PATH
+ExecStart=/usr/bin/python3 /root/check_shardeum_status.py
+StandardOutput=append:/root/shardeum_monitor.log
+StandardError=append:/root/shardeum_monitor.log
 Restart=on-failure
 
 [Install]
