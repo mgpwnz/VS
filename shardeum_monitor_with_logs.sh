@@ -125,11 +125,12 @@ TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
 cat << EOF > $TIMER_PATH
 [Unit]
 Description=Run Shardeum Status Check every 15 minutes
+Wants=check_shardeum_status.service
 
 [Timer]
-OnBootSec=1min          # Запуск через 1 хвилину після старту системи
-OnUnitActiveSec=15min   # Повторювати кожні 15 хвилин
-Persistent=true
+OnBootSec=1min          
+OnUnitActiveSec=15min   
+Persistent=true          
 
 [Install]
 WantedBy=timers.target
