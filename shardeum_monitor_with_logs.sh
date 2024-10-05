@@ -6,6 +6,10 @@
 SCRIPT_PATH="/root/check_shardeum_status.py"
 LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
 
+#install components
+apt update
+apt install python3-pip
+
 # Створюємо Python-скрипт, який перевіряє контейнер та оператор
 cat << 'EOF' > $SCRIPT_PATH
 import subprocess
