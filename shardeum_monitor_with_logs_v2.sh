@@ -134,7 +134,7 @@ def send_telegram_message(status, prev_status=None):
     elif status == "standby":
         message = f"{prefix}Container started 🟢"
     else:
-        message = f"{prefix}{STATUSES[status]}"
+        message = f"{prefix}{STATUSES.get(status, status)}"
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
