@@ -5,12 +5,37 @@ apt update
 apt install -y python3-pip
 pip3 install pytz requests
 
+# === Функція для перевірки Telegram ===
+function test_telegram() {
+    local message="Тестове повідомлення від Shardeum Monitor"
+    local url="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
+    
+    response=$(curl -s -X POST "$url" -d "chat_id=$CHAT_ID&text=$message")
+    
+    if [[ "$response" == *'"ok":true'* ]]; then
+        echo "Тестове повідомлення успішно надіслано."
+        return 0
+    else
+        echo "Не вдалося надіслати тестове повідомлення."
+        return 1
+    fi
+}
+
 # === Запит на використання Telegram бота ===
 read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " use_telegram
 
 if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
-    read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-    read -p "Введіть свій CHAT_ID: " CHAT_ID
+    while true; do
+        read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
+        read -p "Введіть свій CHAT_ID: " CHAT_ID
+        
+        # Перевіряємо, чи вдається надіслати тестове повідомлення
+        if test_telegram; then
+            break
+        else
+            echo "Спробуйте ще раз ввести дані."
+        fi
+    done
 else
     TELEGRAM_BOT_TOKEN=""
     CHAT_ID=""
@@ -204,35 +229,16 @@ def start_gui():
     except subprocess.CalledProcessError as e:
         log_status(f"Error executing GUI start command: {e}")
 
-def main():
-    container_name = "shardeum-dashboard"
-
-    # Перевірка, чи контейнер запущений
-    if not is_container_running(container_name):
-        log_status(f"Container {container_name} is not running. Starting it...")
-        start_container(container_name)
-    
-    # Перевірка статусу оператора після запуску контейнера
-    check_status_and_restart_operator()
-
-# Виклик основної функції
 if __name__ == "__main__":
-    main()
+    check_status_and_restart_operator()
 EOF
 
-# Задаємо виконувані права для скрипта
-chmod +x $SCRIPT_PATH
-
 # === Створення системного сервісу ===
-
 SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
 
-# Створюємо systemd сервіс для автозапуску скрипта
 cat << EOF > $SERVICE_PATH
 [Unit]
-Description=Check Shardeum Container and Operator Status
-After=docker.service
-Requires=docker.service
+Description=Check Shardeum Status
 
 [Service]
 Type=simple
