@@ -140,6 +140,7 @@ def log_status(status, prev_status=None):
         send_default_message(status)
 
 
+
 def send_status_change_message(current_status, previous_status):
     """Функція для відправки повідомлення про зміну статусу у Telegram."""
     if INCLUDE_IP:
@@ -252,18 +253,30 @@ def check_status_and_restart_operator():
     
     previous_status = load_last_status()
 
-    if output == "unknown":
-        log_status("Не вдалося отримати статус оператора.")
-        return False
-    
-    if previous_status != output:  # Якщо статус змінився, логування та повідомлення
-        log_status(output, previous_status)
-        save_last_status(output)
+    for line in output.splitlines():
+        if "state" in line:
+            current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
+            
+            # Змінюємо логіку для контролю статусу контейнера
+            if current_status == "stopped":
+                log_status("stopped")
+                log_status("Starting the operator...", previous_status)
+                restart_operator()
+                return False
+            elif current_status == "active":
+                log_status("active", previous_status)
+            else:
+                log_status("unknown")  # Якщо статус не вказаний, вважаємо його невідомим
 
-    if output == "stopped":
-        log_status("State is 'stopped', starting the operator...")
-        restart_operator()
-        return False
+    # Додати затримку перед перевіркою статусу контейнера
+    time.sleep(10)  # Затримка 10 секунд
+
+    # Перевірка статусу контейнера
+    if is_container_running("shardeum-dashboard"):
+        log_status("Container is running 🟢")
+    else:
+        log_status("Container is not running ❌")
+        start_container("shardeum-dashboard")
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
@@ -346,4 +359,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v1.0!"
+echo "Скрипт успішно встановлений і запущений v1.1!"
