@@ -246,4 +246,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
+echo "1Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
