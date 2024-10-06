@@ -44,10 +44,6 @@ fi
 # Запит на включення IP-адреси у повідомленнях
 read -p "Чи потрібно включати IP адресу в повідомленнях (Y/N)? " include_ip
 
-# Запит на час для системного таймера (в хвилинах)
-read -p "Введіть інтервал для системного таймера (хвилини, за замовчуванням 15): " timer_interval
-timer_interval=${timer_interval:-15}  # Якщо нічого не введено, за замовчуванням 15 хвилин
-
 # Шлях до Python-скрипта
 SCRIPT_PATH="/root/check_shardeum_status.py"
 LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
@@ -74,11 +70,10 @@ SERVER_IP = subprocess.getoutput("hostname -I | awk '{print \$1}'")
 
 # Визначаємо статуси з графічними символами
 STATUSES = {
-    "offline": "❌ offline",
+    "stopped": "❌ stopped",
     "waiting-for-network": "⏳ waiting-for-network",
     "standby": "🟢 standby",
-    "active": "🔵 active",
-    "stopped": "❌ stopped"  
+    "active": "🔵 active"  
 }
 
 # Змінна для зберігання попереднього статусу
@@ -169,20 +164,11 @@ def send_default_message(current_status):
 def check_container_status():
     """Перевіряє статус контейнера Shardeum."""
     try:
-        result = subprocess.run(["docker", "inspect", "--format", "{{.State.Status}}", "shardeum"], capture_output=True, text=True)
+        result = subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "status"], capture_output=True, text=True)
         return result.stdout.strip()
     except Exception as e:
         print(f"Error checking container status: {e}")
         return "unknown"
-
-def restart_container():
-    """Перезапускає контейнер Shardeum."""
-    try:
-        subprocess.run(["docker", "restart", "shardeum"], check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error restarting container: {e}")
-        return False
 
 # Головна логіка виконання
 def main():
@@ -194,14 +180,6 @@ def main():
         if current_status != last_status:
             log_status(current_status, last_status)
             save_last_status(current_status)
-        
-        # Якщо контейнер не активний, перезапустимо його
-        if current_status in ["offline", "stopped"]:
-            if restart_container():
-                print(f"Контейнер перезапущено.")
-                new_status = check_container_status()
-                log_status(new_status, current_status)
-                save_last_status(new_status)
 
         # Затримка перед наступною перевіркою
         time.sleep(5)  # Перевіряємо статус кожні 5 секунд
@@ -230,11 +208,11 @@ EOF
 # Створюємо таймер systemd
 cat << EOF > /etc/systemd/system/shardeum_monitor.timer
 [Unit]
-Description=Runs Shardeum Monitor every $timer_interval minutes
+Description=Runs Shardeum Monitor every time the timer is triggered
 
 [Timer]
 OnActiveSec=0
-OnUnitActiveSec=${timer_interval}min
+OnUnitActiveSec=1min
 Unit=shardeum_monitor.service
 
 [Install]
@@ -246,4 +224,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "1Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
+echo "Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
