@@ -162,13 +162,26 @@ def send_default_message(current_status):
         print(f"Error sending message: {e}")
 
 def check_container_status():
-    """Перевіряє статус контейнера Shardeum."""
+    """Перевіряє статус контейнера Shardeum і повертає очікуваний статус."""
     try:
         result = subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "status"], capture_output=True, text=True)
-        return result.stdout.strip()
+        output = result.stdout.strip()
+        
+        # Перевіряємо наявність очікуваних статусів у виводі
+        if "status: stopped" in output:
+            return "stopped"
+        elif "status: waiting-for-network" in output:
+            return "waiting-for-network"
+        elif "status: standby" in output:
+            return "standby"
+        elif "status: active" in output:
+            return "active"
+        else:
+            return "unknown"
     except Exception as e:
         print(f"Error checking container status: {e}")
         return "unknown"
+
 
 def start_validator():
     """Запускає валідатор, якщо він зупинений."""
