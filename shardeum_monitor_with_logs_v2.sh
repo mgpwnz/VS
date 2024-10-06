@@ -27,15 +27,20 @@ if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
             echo "Введіть дані знову."
         fi
     done
+
+    # Запит на включення IP-адреси в повідомленнях
+    read -p "Чи потрібно включити IP адресу в повідомленнях (Y/N)? " include_ip
 else
     TELEGRAM_BOT_TOKEN=""
     CHAT_ID=""
+    include_ip="N"  # Якщо не використовуємо Telegram, встановлюємо значення за замовчуванням
 fi
 
 # Шлях до Python-скрипта
 SCRIPT_PATH="$HOME/check_shardeum_status.py"
 LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
 HOSTNAME=$(hostname)  # Отримуємо ім'я хоста
+SERVER_IP=$(hostname -I | awk '{print $1}')  # Отримуємо IP-адресу сервера
 
 # Створюємо Python-скрипт
 cat << EOF > $SCRIPT_PATH
@@ -49,8 +54,9 @@ import socket
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
-SERVER_IP = socket.gethostbyname(socket.gethostname())  # Отримуємо IP-адресу сервера
+SERVER_IP = "$SERVER_IP"  # Отримуємо IP-адресу сервера
 HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
+INCLUDE_IP = "$include_ip"  # Чи потрібно включати IP в повідомленнях
 
 previous_status = None
 
@@ -72,10 +78,6 @@ def log_status(status):
     # Запис у файл з обмеженням на відкриті файли
     with open(LOG_PATH, "a") as log_file:
         log_file.write(log_message)
-    
-    # Якщо включено Telegram сповіщення, відправляємо статус
-    if TELEGRAM_BOT_TOKEN and CHAT_ID:
-        send_telegram_message(log_message)
 
 def send_telegram_message(message):
     """Функція для відправки повідомлення у Telegram."""
@@ -144,17 +146,17 @@ def check_status_and_restart_operator():
             
             if previous_status != current_status:  # Якщо статус змінився
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                log_status(f"State changed to '{emoji_status}'")
-                previous_status = current_status
-                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                message = f"State changed to '{emoji_status}'"
+                if INCLUDE_IP == "Y":
+                    message += f" (IP: {SERVER_IP})"  # Додаємо IP-адресу, якщо потрібно
+                log_status(message)
+                send_telegram_message(message)  # Відправка повідомлення в Telegram
+                previous_status = current_status  # Оновлюємо попередній статус
             
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
-            else:
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                log_status(f"State is '{emoji_status}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
@@ -224,28 +226,26 @@ SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
 # Створюємо systemd сервіс для автозапуску скрипта
 cat << EOF > $SERVICE_PATH
 [Unit]
-Description=Check Shardeum Container and Operator Status
-After=docker.service
-Requires=docker.service
+Description=Check Shardeum Dashboard Status
 
 [Service]
+Type=simple
 ExecStart=/usr/bin/python3 $SCRIPT_PATH
-StandardOutput=append:$LOG_PATH
-StandardError=append:$LOG_PATH
-Restart=on-failure
+Restart=always
+User=$USER
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# === Створення системного таймера для виконання сервісу кожні 15 хвилин ===
+# === Створення таймера для періодичного запуску ===
 
 TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
 
+# Створюємо systemd таймер для запуску сервісу
 cat << EOF > $TIMER_PATH
 [Unit]
-Description=Run Shardeum Status Check every 15 minutes
-Wants=check_shardeum_status.service
+Description=Run Check Shardeum Status every 15 minutes
 
 [Timer]
 OnBootSec=1min          
@@ -265,3 +265,4 @@ systemctl enable check_shardeum_status.timer
 systemctl start check_shardeum_status.timer
 
 echo "Сервіс та таймер для моніторингу Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
+
