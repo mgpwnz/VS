@@ -102,7 +102,7 @@ def log_status(status, prev_status=None):
     if prev_status and prev_status in STATUSES:
         log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] State changed from '{STATUSES[prev_status]}' to '{STATUSES[status]}'"
     else:
-        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}" 
+        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
     
     # Запис у лог-файл
     if not os.path.exists(LOG_PATH):
@@ -111,32 +111,50 @@ def log_status(status, prev_status=None):
     with open(LOG_PATH, "a") as log_file:
         log_file.write(log_message + "\n")
 
+    # Відправка повідомлень
     if prev_status and prev_status in STATUSES:
         # Якщо статус змінився, відправляємо відповідне повідомлення
-        if TELEGRAM_BOT_TOKEN and CHAT_ID:
-            send_telegram_message(status, prev_status)
+        send_status_change_message(status, prev_status)
     else:
         # Відправка повідомлення без зміни статусу
-        if TELEGRAM_BOT_TOKEN and CHAT_ID:
-            send_telegram_message(status)
+        send_default_message(status)
 
-def send_telegram_message(status, prev_status=None):
-    """Функція для відправки повідомлення у Telegram."""
+def send_status_change_message(current_status, previous_status):
+    """Функція для відправки повідомлення про зміну статусу у Telegram."""
     if INCLUDE_IP:
         prefix = f"{HOSTNAME} {SERVER_IP} "
     else:
         prefix = f"{HOSTNAME} "
 
-    if prev_status:
-        message = f"{prefix}State changed from {STATUSES[prev_status]} to {STATUSES[status]}"
-    elif status == "stopped":
+    message = f"{prefix}State changed from {STATUSES[previous_status]} to {STATUSES[current_status]}"
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message
+    }
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code != 200:
+            log_status(f"Failed to send message: {response.text}")
+    except Exception as e:
+        log_status(f"Error sending Telegram message: {e}")
+
+def send_default_message(status):
+    """Функція для відправки стандартного повідомлення у Telegram."""
+    if INCLUDE_IP:
+        prefix = f"{HOSTNAME} {SERVER_IP} "
+    else:
+        prefix = f"{HOSTNAME} "
+
+    if status == "stopped":
         message = f"{prefix}Container is not running ❌"
     elif status == "standby":
         message = f"{prefix}Container started 🟢"
     elif status == "active":
         message = f"{prefix}Operator started ✅"
     else:
-        message = f"{prefix}{STATUSES.get(status, status)}"
+        message = f"{prefix}Unknown state: {status}"
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
@@ -149,6 +167,7 @@ def send_telegram_message(status, prev_status=None):
             log_status(f"Failed to send message: {response.text}")
     except Exception as e:
         log_status(f"Error sending Telegram message: {e}")
+
 
 def is_container_running(container_name):
     """Функція для перевірки, чи запущений контейнер."""
@@ -296,4 +315,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v6!"
+echo "Скрипт успішно встановлений і запущений v7!"
