@@ -9,38 +9,19 @@ pip3 install pytz requests
 read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " use_telegram
 
 if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
-    while true; do
-        read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-        read -p "Введіть свій CHAT_ID: " CHAT_ID
-
-        # Перевірка відправки тестового повідомлення
-        test_message="Тестове повідомлення для перевірки."
-        url="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
-
-        response=$(curl -s -X POST $url -d chat_id=$CHAT_ID -d text="$test_message")
-
-        if [[ $response == *'"ok":true'* ]]; then
-            echo "Повідомлення успішно надіслано в Telegram."
-            break
-        else
-            echo "Не вдалося надіслати повідомлення. Будь ласка, перевірте TOKEN та CHAT_ID."
-            echo "Введіть дані знову."
-        fi
-    done
-
-    # Запит на включення IP-адреси в повідомленнях
-    read -p "Чи потрібно включити IP адресу в повідомленнях (Y/N)? " include_ip
+    read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
+    read -p "Введіть свій CHAT_ID: " CHAT_ID
 else
     TELEGRAM_BOT_TOKEN=""
     CHAT_ID=""
-    include_ip="N"  # Якщо не використовуємо Telegram, встановлюємо значення за замовчуванням
 fi
+
+# Запит на включення IP-адреси у повідомленнях
+read -p "Чи потрібно включати IP адресу в повідомленнях (Y/N)? " include_ip
 
 # Шлях до Python-скрипта
 SCRIPT_PATH="$HOME/check_shardeum_status.py"
 LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
-HOSTNAME=$(hostname)  # Отримуємо ім'я хоста
-SERVER_IP=$(hostname -I | awk '{print $1}')  # Отримуємо IP-адресу сервера
 
 # Створюємо Python-скрипт
 cat << EOF > $SCRIPT_PATH
@@ -54,19 +35,11 @@ import socket
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
-SERVER_IP = "$SERVER_IP"  # Отримуємо IP-адресу сервера
-HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
-INCLUDE_IP = "$include_ip"  # Чи потрібно включати IP в повідомленнях
+INCLUDE_IP = "$include_ip" == "Y"
 
-previous_status = None
-
-# Словник статусів з графічними символами
-status_emojis = {
-    "offline": "❌ offline",
-    "waiting-for-network": "⏳ waiting-for-network",
-    "standby": "🟢 standby",
-    "active": "🔵 active"
-}
+# Отримуємо hostname і IP адреси
+HOSTNAME = socket.gethostname()
+SERVER_IP = subprocess.getoutput("hostname -I | awk '{print \$1}'")
 
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
@@ -75,12 +48,28 @@ def log_status(status):
 
     log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n"
     
-    # Запис у файл з обмеженням на відкриті файли
-    with open(LOG_PATH, "a") as log_file:
-        log_file.write(log_message)
+    # Перевіряємо, чи існує лог-файл, і якщо ні, створюємо його
+    if not os.path.exists(LOG_PATH):
+        open(LOG_PATH, 'w').close()  # Створюємо порожній файл, якщо не існує
 
-def send_telegram_message(message):
+    try:
+        # Запис у файл з обмеженням на відкриті файли
+        with open(LOG_PATH, "a") as log_file:
+            log_file.write(log_message)
+    except Exception as e:
+        print(f"Error writing to log file: {e}")  # Виводимо помилку в консоль
+    
+    # Якщо включено Telegram сповіщення, відправляємо статус
+    if TELEGRAM_BOT_TOKEN and CHAT_ID:
+        send_telegram_message(status)
+
+def send_telegram_message(status):
     """Функція для відправки повідомлення у Telegram."""
+    if INCLUDE_IP:
+        message = f"[{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
+    else:
+        message = f"[{HOSTNAME}] Shardeum operator status: {status}"
+
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
         "chat_id": CHAT_ID,
@@ -137,23 +126,21 @@ def check_operator_status():
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
-    global previous_status  # Дозволяємо змінювати глобальну змінну
     output = check_operator_status()
     
+    # Відстежуємо попередній статус, щоб уникнути спаму
+    previous_status = None
+
     for line in output.splitlines():
         if "state" in line:
-            current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
-            
-            if previous_status != current_status:  # Якщо статус змінився
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                message = f"State changed to '{emoji_status}'"
-                if INCLUDE_IP == "Y":
-                    message += f" (IP: {SERVER_IP})"  # Додаємо IP-адресу, якщо потрібно
-                log_status(message)
-                send_telegram_message(message)  # Відправка повідомлення в Telegram
-                previous_status = current_status  # Оновлюємо попередній статус
-            
-            if "stopped" in current_status:
+            current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
+            if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
+                previous_status = current_status
+                log_status(f"State changed to '{current_status}'")
+            else:
+                log_status(f"State is '{current_status}'")  # Логування поточного статусу
+
+            if current_status == "stopped":
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
@@ -226,26 +213,28 @@ SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
 # Створюємо systemd сервіс для автозапуску скрипта
 cat << EOF > $SERVICE_PATH
 [Unit]
-Description=Check Shardeum Dashboard Status
+Description=Check Shardeum Container and Operator Status
+After=docker.service
+Requires=docker.service
 
 [Service]
-Type=simple
 ExecStart=/usr/bin/python3 $SCRIPT_PATH
-Restart=always
-User=$USER
+StandardOutput=append:$LOG_PATH
+StandardError=append:$LOG_PATH
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# === Створення таймера для періодичного запуску ===
+# === Створення системного таймера для виконання сервісу кожні 15 хвилин ===
 
 TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
 
-# Створюємо systemd таймер для запуску сервісу
 cat << EOF > $TIMER_PATH
 [Unit]
-Description=Run Check Shardeum Status every 15 minutes
+Description=Run Shardeum Status Check every 15 minutes
+Wants=check_shardeum_status.service
 
 [Timer]
 OnBootSec=1min          
@@ -256,13 +245,10 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-# Перезавантажуємо systemd, щоб застосувати зміни
+# === Запуск та активація сервісу та таймера ===
 systemctl daemon-reload
-
-# Активуємо та запускаємо сервіс та таймер
 systemctl enable check_shardeum_status.service
 systemctl enable check_shardeum_status.timer
 systemctl start check_shardeum_status.timer
 
-echo "Сервіс та таймер для моніторингу Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
-
+echo "Скрипт та сервіс успішно встановлені."
