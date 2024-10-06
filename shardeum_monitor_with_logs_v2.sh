@@ -2,7 +2,7 @@
 
 # === Оновлення системи та встановлення необхідних пакетів ===
 apt update
-apt install -y python3-pip
+apt install -y python3-pip curl
 pip3 install pytz requests
 
 # === Функція для перевірки Telegram ===
@@ -179,7 +179,7 @@ def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
     output = check_operator_status()
     
-    previous_status = None
+    previous_status = load_last_status()
 
     for line in output.splitlines():
         if "state" in line:
@@ -190,10 +190,10 @@ def check_status_and_restart_operator():
                 current_status_display = current_status  # Якщо статус не вказаний, залишаємо як є
 
             if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
-                previous_status = current_status
                 log_status(f"State changed to '{current_status_display}'")
+                save_last_status(current_status)
             else:
-                log_status(f"State is '{current_status_display}'")  # Логування поточного статусу
+                continue
 
             if current_status == "stopped":
                 log_status("State is 'stopped', starting the operator...")
@@ -281,4 +281,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт v3 успішно встановлений і запущений!"
+echo "Скрипт успішно встановлений і запущений!"
