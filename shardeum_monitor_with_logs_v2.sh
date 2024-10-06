@@ -54,6 +54,14 @@ HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
 
 previous_status = None
 
+# Словник статусів з графічними символами
+status_emojis = {
+    "offline": "❌ offline",
+    "waiting-for-network": "⏳ waiting-for-network",
+    "standby": "🟢 standby",
+    "active": "🔵 active"
+}
+
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
@@ -135,15 +143,18 @@ def check_status_and_restart_operator():
             current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
             
             if previous_status != current_status:  # Якщо статус змінився
-                log_status(f"State changed to '{current_status}'")
+                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
+                log_status(f"State changed to '{emoji_status}'")
                 previous_status = current_status
+                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
             
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
             else:
-                log_status(f"State is '{current_status}'")  # Записуємо тільки статус
+                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
+                log_status(f"State is '{emoji_status}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
