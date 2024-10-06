@@ -78,6 +78,21 @@ STATUSES = {
     "active": "🔵 active"
 }
 
+# Змінна для зберігання попереднього статусу
+LAST_STATUS_FILE = "/tmp/shardeum_last_status.txt"
+
+def load_last_status():
+    """Завантажує останній статус з файлу."""
+    if os.path.exists(LAST_STATUS_FILE):
+        with open(LAST_STATUS_FILE, "r") as file:
+            return file.read().strip()
+    return None
+
+def save_last_status(status):
+    """Зберігає останній статус у файл."""
+    with open(LAST_STATUS_FILE, "w") as file:
+        file.write(status)
+
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
@@ -85,20 +100,19 @@ def log_status(status):
 
     log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n"
     
-    # Перевіряємо, чи існує лог-файл, і якщо ні, створюємо його
+    # Запис у лог-файл
     if not os.path.exists(LOG_PATH):
-        open(LOG_PATH, 'w').close()  # Створюємо порожній файл, якщо не існує
+        open(LOG_PATH, 'w').close()
 
-    try:
-        # Запис у файл з обмеженням на відкриті файли
-        with open(LOG_PATH, "a") as log_file:
-            log_file.write(log_message)
-    except Exception as e:
-        print(f"Error writing to log file: {e}")  # Виводимо помилку в консоль
-    
-    # Якщо включено Telegram сповіщення, відправляємо статус
-    if TELEGRAM_BOT_TOKEN and CHAT_ID:
-        send_telegram_message(status)
+    with open(LOG_PATH, "a") as log_file:
+        log_file.write(log_message)
+
+    last_status = load_last_status()
+    if last_status != status:
+        # Якщо статус змінився, зберігаємо новий та відправляємо повідомлення
+        save_last_status(status)
+        if TELEGRAM_BOT_TOKEN and CHAT_ID:
+            send_telegram_message(status)
 
 def send_telegram_message(status):
     """Функція для відправки повідомлення у Telegram."""
@@ -165,7 +179,6 @@ def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
     output = check_operator_status()
     
-    # Відстежуємо попередній статус, щоб уникнути спаму
     previous_status = None
 
     for line in output.splitlines():
@@ -225,63 +238,47 @@ def start_gui():
         if gui_result.returncode == 0:
             log_status("GUI started successfully!")
         else:
-            log_status(f"Failed to start the GUI: {gui_result.stderr}")
+            log_status(f"Failed to start GUI: {gui_result.stderr}")
     except subprocess.CalledProcessError as e:
-        log_status(f"Error executing GUI start command: {e}")
+        log_status(f"Error starting GUI: {e}")
 
 if __name__ == "__main__":
+    if not is_container_running("shardeum-dashboard"):
+        log_status("Container 'shardeum-dashboard' is not running, starting the container...")
+        start_container("shardeum-dashboard")
+
     check_status_and_restart_operator()
 EOF
 
-# === Створення системного сервісу ===
-SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
-
-cat << EOF > $SERVICE_PATH
-[Unit]
-Description=Check Shardeum Status
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 $SCRIPT_PATH
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# === Створення таймера ===
-TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
-
+# Створюємо таймер systemd
+TIMER_PATH="/etc/systemd/system/shardeum_monitor.timer"
 cat << EOF > $TIMER_PATH
 [Unit]
-Description=Timer for Check Shardeum Status
+Description=Shardeum Monitor Timer
 
 [Timer]
-OnBootSec=5min
+OnBootSec=10min
 OnUnitActiveSec=${timer_interval}min
-Unit=check_shardeum_status.service
+Unit=shardeum_monitor.service
 
 [Install]
 WantedBy=timers.target
 EOF
 
-# === Запуск та активація сервісу та таймера ===
+# Створюємо systemd-сервіс
+SERVICE_PATH="/etc/systemd/system/shardeum_monitor.service"
+cat << EOF > $SERVICE_PATH
+[Unit]
+Description=Shardeum Monitor Service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 $SCRIPT_PATH
+EOF
+
+# Перезапуск systemd для врахування нового таймера
 systemctl daemon-reload
-systemctl enable check_shardeum_status.service
-systemctl enable check_shardeum_status.timer
-systemctl start check_shardeum_status.timer
+systemctl enable shardeum_monitor.timer
+systemctl start shardeum_monitor.timer
 
-# Виводимо статус сервісу та таймера
-echo "Статус сервісу:"
-sudo systemctl status check_shardeum_status.service
-SERVICE_STATUS=$?
-
-echo "Статус таймера:"
-sudo systemctl status check_shardeum_status.timer
-TIMER_STATUS=$?
-
-if [ $SERVICE_STATUS -ne 0 ] || [ $TIMER_STATUS -ne 0 ]; then
-    echo "Сервіс або таймер неактивні. Будь ласка, перевстановіть скрипт."
-else
-    echo "Скрипт та сервіс успішно встановлені v2."
-fi
+echo "Скрипт v3 успішно встановлений і запущений!"
