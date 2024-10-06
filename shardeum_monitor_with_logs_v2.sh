@@ -93,33 +93,48 @@ def save_last_status(status):
     with open(LAST_STATUS_FILE, "w") as file:
         file.write(status)
 
-def log_status(status):
-    """Функція для запису часу та статусу в лог."""
+def log_status(status, prev_status=None):
+    """Функція для запису часу та статусу в лог та надсилання повідомлень у Telegram."""
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n"
+    if prev_status:
+        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] State changed from '{STATUSES[prev_status]}' to '{STATUSES[status]}'"
+    else:
+        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
     
     # Запис у лог-файл
     if not os.path.exists(LOG_PATH):
         open(LOG_PATH, 'w').close()
 
     with open(LOG_PATH, "a") as log_file:
-        log_file.write(log_message)
+        log_file.write(log_message + "\n")
 
-    last_status = load_last_status()
-    if last_status != status:
-        # Якщо статус змінився, зберігаємо новий та відправляємо повідомлення
-        save_last_status(status)
+    if prev_status:
+        # Якщо статус змінився, відправляємо відповідне повідомлення
+        if TELEGRAM_BOT_TOKEN and CHAT_ID:
+            send_telegram_message(status, prev_status)
+    else:
+        # Відправка повідомлення без зміни статусу
         if TELEGRAM_BOT_TOKEN and CHAT_ID:
             send_telegram_message(status)
 
-def send_telegram_message(status):
+
+def send_telegram_message(status, prev_status=None):
     """Функція для відправки повідомлення у Telegram."""
     if INCLUDE_IP:
-        message = f"{HOSTNAME} {SERVER_IP} {status}"
+        prefix = f"{HOSTNAME} {SERVER_IP} "
     else:
-        message = f"{HOSTNAME} {status}"
+        prefix = f"{HOSTNAME} "
+
+    if prev_status:
+        message = f"{prefix}State changed from {STATUSES[prev_status]} to {STATUSES[status]}"
+    elif status == "stopped":
+        message = f"{prefix}Container is not running ❌"
+    elif status == "standby":
+        message = f"{prefix}Container started 🟢"
+    else:
+        message = f"{prefix}{STATUSES[status]}"
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
@@ -190,10 +205,8 @@ def check_status_and_restart_operator():
                 current_status_display = current_status  # Якщо статус не вказаний, залишаємо як є
 
             if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
-                log_status(f"State changed to '{current_status_display}'")
+                log_status(f"State changed to '{current_status_display}'", previous_status)
                 save_last_status(current_status)
-            else:
-                continue
 
             if current_status == "stopped":
                 log_status("State is 'stopped', starting the operator...")
