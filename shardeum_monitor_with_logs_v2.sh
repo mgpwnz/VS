@@ -35,6 +35,7 @@ fi
 # Шлях до Python-скрипта
 SCRIPT_PATH="$HOME/check_shardeum_status.py"
 LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
+HOSTNAME=$(hostname)  # Отримуємо ім'я хоста
 
 # Створюємо Python-скрипт
 cat << EOF > $SCRIPT_PATH
@@ -49,6 +50,7 @@ TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
 SERVER_IP = socket.gethostbyname(socket.gethostname())  # Отримуємо IP-адресу сервера
+HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
 
 previous_status = None
 
@@ -57,7 +59,7 @@ def log_status(status):
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    log_message = f"{current_time} [{SERVER_IP}] Shardeum operator status: {status}\n"
+    log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n"
     
     # Запис у файл з обмеженням на відкриті файли
     with open(LOG_PATH, "a") as log_file:
@@ -251,4 +253,4 @@ systemctl enable check_shardeum_status.service
 systemctl enable check_shardeum_status.timer
 systemctl start check_shardeum_status.timer
 
-echo "Сервіс та таймер для моніторингу v1.0 Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
+echo "Сервіс та таймер для моніторингу Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
