@@ -251,4 +251,4 @@ systemctl enable check_shardeum_status.service
 systemctl enable check_shardeum_status.timer
 systemctl start check_shardeum_status.timer
 
-echo "Сервіс та таймер для моніторингу Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
+echo "Сервіс та таймер для моніторингу v1.0 Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
