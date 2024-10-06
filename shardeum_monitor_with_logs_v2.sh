@@ -9,8 +9,24 @@ pip3 install pytz requests
 read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " use_telegram
 
 if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
-    read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-    read -p "Введіть свій CHAT_ID: " CHAT_ID
+    while true; do
+        read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
+        read -p "Введіть свій CHAT_ID: " CHAT_ID
+
+        # Перевірка відправки тестового повідомлення
+        test_message="Тестове повідомлення для перевірки."
+        url="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
+
+        response=$(curl -s -X POST $url -d chat_id=$CHAT_ID -d text="$test_message")
+
+        if [[ $response == *'"ok":true'* ]]; then
+            echo "Повідомлення успішно надіслано в Telegram."
+            break
+        else
+            echo "Не вдалося надіслати повідомлення. Будь ласка, перевірте TOKEN та CHAT_ID."
+            echo "Введіть дані знову."
+        fi
+    done
 else
     TELEGRAM_BOT_TOKEN=""
     CHAT_ID=""
