@@ -190,18 +190,23 @@ def send_default_message(status):
     except Exception as e:
         log_status(f"Error sending Telegram message: {e}")
 
-def is_container_running(container_name):
-    """Функція для перевірки, чи запущений контейнер."""
+def start_container(container_name):
+    """Функція для запуску контейнера."""
     try:
         result = subprocess.run(
-            ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+            ["docker", "start", container_name],
             capture_output=True,
             text=True
         )
-        return result.stdout.strip() == "true"
+        if result.returncode == 0:
+            log_status(f"Container {container_name} started successfully!")
+        else:
+            log_status(f"Failed to start container: {result.stderr}")
+            # Можливо, варто надіслати повідомлення про цю помилку у Telegram
+            send_default_message("stopped")
     except subprocess.CalledProcessError as e:
-        log_status(f"Error checking container status: {e}")
-        return False
+        log_status(f"Error starting container: {e}")
+
 
 def start_container(container_name):
     """Функція для запуску контейнера."""
@@ -360,4 +365,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v1.1!"
+echo "Скрипт успішно встановлений і запущений v1.2!"
