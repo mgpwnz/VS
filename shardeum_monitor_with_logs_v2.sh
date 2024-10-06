@@ -19,6 +19,10 @@ fi
 # Запит на включення IP-адреси у повідомленнях
 read -p "Чи потрібно включати IP адресу в повідомленнях (Y/N)? " include_ip
 
+# Запит на час для системного таймера (в хвилинах)
+read -p "Введіть інтервал для системного таймера (хвилини, за замовчуванням 15): " timer_interval
+timer_interval=${timer_interval:-15}  # Якщо нічого не введено, за замовчуванням 15 хвилин
+
 # Шлях до Python-скрипта
 SCRIPT_PATH="$HOME/check_shardeum_status.py"
 LOG_PATH="$HOME/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
@@ -40,6 +44,14 @@ INCLUDE_IP = "$include_ip" == "Y"
 # Отримуємо hostname і IP адреси
 HOSTNAME = socket.gethostname()
 SERVER_IP = subprocess.getoutput("hostname -I | awk '{print \$1}'")
+
+# Визначаємо статуси з графічними символами
+STATUSES = {
+    "offline": "❌ offline",
+    "waiting-for-network": "⏳ waiting-for-network",
+    "standby": "🟢 standby",
+    "active": "🔵 active"
+}
 
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
@@ -134,11 +146,16 @@ def check_status_and_restart_operator():
     for line in output.splitlines():
         if "state" in line:
             current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
+            if current_status in STATUSES:
+                current_status_display = STATUSES[current_status]  # Отримуємо статус з графічним символом
+            else:
+                current_status_display = current_status  # Якщо статус не вказаний, залишаємо як є
+
             if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
                 previous_status = current_status
-                log_status(f"State changed to '{current_status}'")
+                log_status(f"State changed to '{current_status_display}'")
             else:
-                log_status(f"State is '{current_status}'")  # Логування поточного статусу
+                log_status(f"State is '{current_status_display}'")  # Логування поточного статусу
 
             if current_status == "stopped":
                 log_status("State is 'stopped', starting the operator...")
@@ -218,28 +235,25 @@ After=docker.service
 Requires=docker.service
 
 [Service]
+Type=simple
 ExecStart=/usr/bin/python3 $SCRIPT_PATH
-StandardOutput=append:$LOG_PATH
-StandardError=append:$LOG_PATH
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# === Створення системного таймера для виконання сервісу кожні 15 хвилин ===
-
+# === Створення таймера ===
 TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
 
 cat << EOF > $TIMER_PATH
 [Unit]
-Description=Run Shardeum Status Check every 15 minutes
-Wants=check_shardeum_status.service
+Description=Timer for Check Shardeum Status
 
 [Timer]
-OnBootSec=1min          
-OnUnitActiveSec=15min   
-Persistent=true          
+OnBootSec=5min
+OnUnitActiveSec=${timer_interval}min
+Unit=check_shardeum_status.service
 
 [Install]
 WantedBy=timers.target
@@ -251,4 +265,17 @@ systemctl enable check_shardeum_status.service
 systemctl enable check_shardeum_status.timer
 systemctl start check_shardeum_status.timer
 
-echo "Скрипт та сервіс успішно встановлені."
+# Виводимо статус сервісу та таймера
+echo "Статус сервісу:"
+sudo systemctl status check_shardeum_status.service
+SERVICE_STATUS=$?
+
+echo "Статус таймера:"
+sudo systemctl status check_shardeum_status.timer
+TIMER_STATUS=$?
+
+if [ $SERVICE_STATUS -ne 0 ] || [ $TIMER_STATUS -ne 0 ]; then
+    echo "Сервіс або таймер неактивні. Будь ласка, перевстановіть скрипт."
+else
+    echo "Скрипт та сервіс успішно встановлені."
+fi
