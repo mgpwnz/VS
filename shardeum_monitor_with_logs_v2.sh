@@ -134,6 +134,8 @@ def send_telegram_message(status, prev_status=None):
         message = f"{prefix}Container is not running ❌"
     elif status == "standby":
         message = f"{prefix}Container started 🟢"
+    elif status == "active":
+        message = f"{prefix}Operator started ✅"
     else:
         message = f"{prefix}{STATUSES.get(status, status)}"
 
@@ -295,4 +297,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v5!"
+echo "Скрипт успішно встановлений і запущений v6!"
