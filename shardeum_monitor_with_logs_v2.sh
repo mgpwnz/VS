@@ -180,7 +180,8 @@ def restart_container():
     try:
         subprocess.run(["docker", "restart", "shardeum"], check=True)
         return True
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting container: {e}")
         return False
 
 # Головна логіка виконання
@@ -193,6 +194,14 @@ def main():
         if current_status != last_status:
             log_status(current_status, last_status)
             save_last_status(current_status)
+        
+        # Якщо контейнер не активний, перезапустимо його
+        if current_status in ["offline", "stopped"]:
+            if restart_container():
+                print(f"Контейнер перезапущено.")
+                new_status = check_container_status()
+                log_status(new_status, current_status)
+                save_last_status(new_status)
 
         # Затримка перед наступною перевіркою
         time.sleep(5)  # Перевіряємо статус кожні 5 секунд
