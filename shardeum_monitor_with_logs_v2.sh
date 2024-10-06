@@ -1,268 +1,210 @@
 #!/bin/bash
 
-# === Оновлення системи та встановлення необхідних пакетів ===
-apt update
-apt install -y python3-pip curl
-pip3 install pytz requests
-
-# === Функція для перевірки Telegram ===
-function test_telegram() {
-    local message="Тестове повідомлення від Shardeum Monitor"
-    local url="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
-    
-    response=$(curl -s -X POST "$url" -d "chat_id=$CHAT_ID&text=$message")
-    
-    if [[ "$response" == *'"ok":true'* ]]; then
-        echo "Тестове повідомлення успішно надіслано."
-        return 0
-    else
-        echo "Не вдалося надіслати тестове повідомлення."
-        return 1
-    fi
-}
-
-# === Запит на використання Telegram бота ===
-read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " use_telegram
-
-if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
-    while true; do
-        read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-        read -p "Введіть свій CHAT_ID: " CHAT_ID
-        
-        # Перевіряємо, чи вдається надіслати тестове повідомлення
-        if test_telegram; then
-            break
-        else
-            echo "Спробуйте ще раз ввести дані."
-        fi
-    done
-else
-    TELEGRAM_BOT_TOKEN=""
-    CHAT_ID=""
-fi
-
-# Запит на включення IP-адреси у повідомленнях
-read -p "Чи потрібно включати IP адресу в повідомленнях (Y/N)? " include_ip
+# === Налаштування системного сервісу та таймера для моніторингу Shardeum Dashboard з логами та Telegram-ботом ===
 
 # Шлях до Python-скрипта
 SCRIPT_PATH="/root/check_shardeum_status.py"
-LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
+LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу
+LAST_STATUS_FILE="/tmp/shardeum_last_status.txt"  # Файл для збереження попереднього статусу
 
-# Створюємо Python-скрипт
-cat << EOF > "$SCRIPT_PATH"
+# Запитуємо користувача про використання Telegram
+read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " USE_TELEGRAM
+
+if [[ "$USE_TELEGRAM" == "Y" || "$USE_TELEGRAM" == "y" ]]; then
+    read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
+    read -p "Введіть свій CHAT_ID: " CHAT_ID
+    read -p "Чи включати IP адресу сервера в повідомлення (Y/N)? " INCLUDE_IP
+else
+    TELEGRAM_BOT_TOKEN=""
+    CHAT_ID=""
+    INCLUDE_IP="N"
+fi
+
+# Встановлення необхідних компонентів
+apt update
+apt install python3-pip -y
+
+# Створюємо Python-скрипт для перевірки контейнера та надсилання сповіщень
+cat << EOF > $SCRIPT_PATH
 import subprocess
-import pytz
-from datetime import datetime
-import requests
 import os
+import requests
 import socket
-import time
 
-# Конфігурація Telegram
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
-LOG_PATH = "$LOG_PATH"
-INCLUDE_IP = "$include_ip" == "Y"
+LAST_STATUS_FILE = "$LAST_STATUS_FILE"
+INCLUDE_IP = "$INCLUDE_IP"
 
-# Отримуємо hostname і IP адреси
-HOSTNAME = socket.gethostname()
-SERVER_IP = subprocess.getoutput("hostname -I | awk '{print \$1}'")
+def send_telegram_message(message):
+    """Функція для надсилання повідомлення через Telegram."""
+    if TELEGRAM_BOT_TOKEN and CHAT_ID:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": message}
+        try:
+            response = requests.post(url, json=payload)
+            if response.status_code == 200:
+                print("Повідомлення надіслано успішно.")
+            else:
+                print(f"Помилка при надсиланні повідомлення: {response.text}")
+        except Exception as e:
+            print(f"Помилка: {e}")
 
-# Визначаємо статуси з графічними символами
-STATUSES = {
-    "stopped": "❌ stopped",
-    "waiting-for-network": "⏳ waiting-for-network",
-    "standby": "🟢 standby",
-    "active": "🔵 active"  
-}
+def get_server_ip():
+    """Отримання IP адреси сервера."""
+    return socket.gethostbyname(socket.gethostname())
 
-# Змінна для зберігання попереднього статусу
-LAST_STATUS_FILE = "/tmp/shardeum_last_status.txt"
-
-def load_last_status():
-    """Завантажує останній статус з файлу."""
-    if os.path.exists(LAST_STATUS_FILE):
-        with open(LAST_STATUS_FILE, "r") as file:
-            return file.read().strip()
-    return None
-
-def save_last_status(status):
-    """Зберігає останній статус у файл."""
-    with open(LAST_STATUS_FILE, "w") as file:
-        file.write(status)
-
-def log_status(status, prev_status=None):
-    """Функція для запису часу та статусу в лог та надсилання повідомлень у Telegram."""
-    timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
-    current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
-
-    # Відображення статусів з графічними символами
-    status_mapping = STATUSES
-
-    # Форматування hostname та IP, якщо включено
-    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
-
-    # Змінні для відправки повідомлень
-    message = ""
-
-    # Перевірка на попередній статус
-    if prev_status and prev_status in status_mapping:
-        current_status_display = status_mapping.get(status, "❓ unknown")
-        prev_status_display = status_mapping.get(prev_status, "❓ unknown")
-        message = f"{prefix}State changed from {prev_status_display} to {current_status_display}"
-    else:
-        current_status_display = status_mapping.get(status, "❓ unknown")
-        message = f"{prefix}{current_status_display}"
-
-    # Запис у лог-файл
-    with open(LOG_PATH, "a") as log_file:
-        log_file.write(f"{current_time} {message}\n")
-
-    # Відправка повідомлення
-    if prev_status and prev_status in status_mapping:
-        send_status_change_message(status, prev_status)
-    else:
-        send_default_message(status)
-
-def send_status_change_message(current_status, previous_status):
-    """Функція для відправки повідомлення про зміну статусу у Telegram."""
-    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
-    
-    current_status_display = STATUSES.get(current_status, "❓ unknown")
-    previous_status_display = STATUSES.get(previous_status, "❓ unknown")
-
-    message = f"{prefix}State changed from {previous_status_display} to {current_status_display}"
-    
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
+def is_container_running(container_name):
+    """Перевіряємо, чи запущений контейнер."""
     try:
-        response = requests.post(url, data=data)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending message: {e}")
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+            capture_output=True,
+            text=True
+        )
+        return result.stdout.strip() == "true"
+    except subprocess.CalledProcessError as e:
+        print(f"Помилка при перевірці контейнера: {e}")
+        return False
 
-def send_default_message(current_status):
-    """Функція для відправки стандартного повідомлення у Telegram."""
-    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
-
-    message = f"{prefix}{STATUSES[current_status]}"
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
+def start_container(container_name):
+    """Запускаємо контейнер."""
     try:
-        response = requests.post(url, data=data)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending message: {e}")
-
-def check_container_status():
-    """Перевіряє статус контейнера Shardeum і повертає очікуваний статус."""
-    try:
-        result = subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "status"], capture_output=True, text=True)
-        output = result.stdout.strip()
-        
-        # Перевіряємо наявність очікуваних статусів у виводі
-        if "status: stopped" in output:
-            return "stopped"
-        elif "status: waiting-for-network" in output:
-            return "waiting-for-network"
-        elif "status: standby" in output:
-            return "standby"
-        elif "status: active" in output:
-            return "active"
+        result = subprocess.run(
+            ["docker", "start", container_name],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print(f"Контейнер {container_name} успішно запущено!")
         else:
-            return "unknown"
-    except Exception as e:
-        print(f"Error checking container status: {e}")
-        return "unknown"
+            print(f"Не вдалося запустити контейнер: {result.stderr}")
+    except subprocess.CalledProcessError as e:
+        print(f"Помилка при запуску контейнера: {e}")
 
-
-def start_validator():
-    """Запускає валідатор, якщо він зупинений."""
-    subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "start"])
-
-def check_gui_status():
-    """Перевіряє статус GUI Shardeum."""
+def check_status_and_restart_operator():
+    """Перевіряємо статус оператора та запускаємо його, якщо потрібно."""
     try:
-        result = subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"], capture_output=True, text=True)
-        return result.stdout.strip()
-    except Exception as e:
-        print(f"Error checking GUI status: {e}")
-        return "unknown"
-
-def start_gui():
-    """Запускає GUI, якщо він не онлайн."""
-    subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "start"])
-
-# Головна логіка виконання
-def main():
-    last_status = load_last_status()
-    
-    while True:
-        current_status = check_container_status()
+        result = subprocess.run(
+            ["docker", "exec", "shardeum-dashboard", "operator-cli", "status"],
+            capture_output=True,
+            text=True
+        )
         
-        # Запускаємо валідатор, якщо він зупинений
+        output = result.stdout
+        current_status = None
+        
+        for line in output.splitlines():
+            if "state" in line:
+                current_status = line.split(":")[-1].strip()
+                break
+
+        if current_status:
+            # Зчитуємо попередній статус
+            last_status = ""
+            if os.path.exists(LAST_STATUS_FILE):
+                with open(LAST_STATUS_FILE, "r") as f:
+                    last_status = f.read().strip()
+
+            # Якщо статус змінився, надсилаємо повідомлення
+            if current_status != last_status:
+                hostname = socket.gethostname()
+                message = f"{hostname} "
+                
+                if INCLUDE_IP == "Y":
+                    message += f"{get_server_ip()} "
+
+                message += f"статус: {current_status}"
+                send_telegram_message(message)
+
+                # Зберігаємо новий статус
+                with open(LAST_STATUS_FILE, "w") as f:
+                    f.write(current_status)
+        
+        # Перевіряємо, чи потрібно перезапускати оператора
         if current_status == "stopped":
-            print("Validator is stopped. Starting...")
-            start_validator()
+            print("Статус 'stopped', запускаємо оператора...")
+            restart_operator()
         
-        # Перевіряємо статус GUI
-        gui_status = check_gui_status()
-        if gui_status != "online":
-            print("GUI is not online. Starting GUI...")
-            start_gui()
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Помилка при перевірці статусу: {e}")
+        return False
 
-        if current_status != last_status:
-            log_status(current_status, last_status)
-            save_last_status(current_status)
+def restart_operator():
+    """Запускаємо оператора."""
+    try:
+        result = subprocess.run(
+            ["docker", "exec", "shardeum-dashboard", "operator-cli", "start"],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print("Оператор успішно запущено!")
+        else:
+            print(f"Не вдалося запустити оператора: {result.stderr}")
+    except subprocess.CalledProcessError as e:
+        print(f"Помилка при запуску оператора: {e}")
 
-        # Затримка перед наступною перевіркою
-        time.sleep(5)  # Перевіряємо статус кожні 5 секунд
+def main():
+    container_name = "shardeum-dashboard"
 
-if __name__ == "__main__":
-    main()
+    if not is_container_running(container_name):
+        print(f"Контейнер {container_name} не запущений. Запускаємо...")
+        start_container(container_name)
+    
+    check_status_and_restart_operator()
+
+# Виклик основної функції
+main()
 EOF
 
-# === Налаштування systemd ===
-# Створюємо сервіс systemd
-cat << EOF > /etc/systemd/system/shardeum_monitor.service
+# Додаємо виконувані права для скрипта
+chmod +x $SCRIPT_PATH
+
+# === Створення системного сервісу ===
+
+SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
+
+cat << EOF > $SERVICE_PATH
 [Unit]
-Description=Shardeum Monitor
+Description=Check Shardeum Container and Operator Status
 After=docker.service
 Requires=docker.service
 
 [Service]
-ExecStart=/usr/bin/python3 $SCRIPT_PATH
-Restart=always
-User=root
+ExecStart=/usr/bin/python3 /root/check_shardeum_status.py
+StandardOutput=append:/root/shardeum_monitor.log
+StandardError=append:/root/shardeum_monitor.log
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Створюємо таймер systemd
-cat << EOF > /etc/systemd/system/shardeum_monitor.timer
+# === Створення системного таймера для виконання сервісу кожні 15 хвилин ===
+
+TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
+
+cat << EOF > $TIMER_PATH
 [Unit]
-Description=Runs Shardeum Monitor every time the timer is triggered
+Description=Run Shardeum Status Check every 15 minutes
+Wants=check_shardeum_status.service
 
 [Timer]
-OnActiveSec=0
-OnUnitActiveSec=1min
-Unit=shardeum_monitor.service
+OnBootSec=1min          
+OnUnitActiveSec=15min   
+Persistent=true          
 
 [Install]
 WantedBy=timers.target
 EOF
 
-# === Активуємо та запускаємо таймер ===
+# Перезавантажуємо systemd та активуємо сервіс
 systemctl daemon-reload
-systemctl enable shardeum_monitor.timer
-systemctl start shardeum_monitor.timer
+systemctl enable check_shardeum_status.service
+systemctl enable check_shardeum_status.timer
+systemctl start check_shardeum_status.timer
 
-echo "Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
+echo "Сервіс для моніторингу Shardeum з Telegram ботом успішно налаштовано. Логи зберігаються у $LOG_PATH."
