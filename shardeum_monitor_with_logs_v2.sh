@@ -53,7 +53,7 @@ SCRIPT_PATH="/root/check_shardeum_status.py"
 LOG_PATH="/root/shardeum_monitor.log"  # Шлях до лог-файлу в домашній директорії
 
 # Створюємо Python-скрипт
-cat << EOF > $SCRIPT_PATH
+cat << EOF > "$SCRIPT_PATH"
 import subprocess
 import pytz
 from datetime import datetime
@@ -102,7 +102,7 @@ def log_status(status, prev_status=None):
     if prev_status and prev_status in STATUSES:
         log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] State changed from '{STATUSES[prev_status]}' to '{STATUSES[status]}'"
     else:
-        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
+        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}" 
     
     # Запис у лог-файл
     if not os.path.exists(LOG_PATH):
@@ -119,7 +119,6 @@ def log_status(status, prev_status=None):
         # Відправка повідомлення без зміни статусу
         if TELEGRAM_BOT_TOKEN and CHAT_ID:
             send_telegram_message(status)
-
 
 def send_telegram_message(status, prev_status=None):
     """Функція для відправки повідомлення у Telegram."""
@@ -268,7 +267,7 @@ EOF
 
 # Створюємо таймер systemd
 TIMER_PATH="/etc/systemd/system/shardeum_monitor.timer"
-cat << EOF > $TIMER_PATH
+cat << EOF > "$TIMER_PATH"
 [Unit]
 Description=Shardeum Monitor Timer
 
@@ -283,13 +282,13 @@ EOF
 
 # Створюємо systemd-сервіс
 SERVICE_PATH="/etc/systemd/system/shardeum_monitor.service"
-cat << EOF > $SERVICE_PATH
+cat << EOF > "$SERVICE_PATH"
 [Unit]
 Description=Shardeum Monitor Service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $SCRIPT_PATH
+ExecStart=/usr/bin/python3 "$SCRIPT_PATH"
 EOF
 
 # Перезапуск systemd для врахування нового таймера
