@@ -27,17 +27,21 @@ import pytz
 from datetime import datetime
 import requests
 import os
+import socket
 
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
+SERVER_IP = socket.gethostbyname(socket.gethostname())  # Отримуємо IP-адресу сервера
+
+previous_status = None
 
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    log_message = f"{current_time} Shardeum operator status: {status}\n"
+    log_message = f"{current_time} [{SERVER_IP}] Shardeum operator status: {status}\n"
     
     # Запис у файл з обмеженням на відкриті файли
     with open(LOG_PATH, "a") as log_file:
@@ -105,16 +109,22 @@ def check_operator_status():
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
+    global previous_status  # Дозволяємо змінювати глобальну змінну
     output = check_operator_status()
     
     for line in output.splitlines():
         if "state" in line:
-            if "stopped" in line:
+            current_status = line.strip()  # Записуємо лише статус
+            if previous_status != current_status:  # Якщо статус змінився
+                log_status(f"State changed to '{current_status}'")
+                previous_status = current_status
+            
+            if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
             else:
-                log_status(f"State is '{line.strip()}'")  # Записуємо тільки статус
+                log_status(f"State is '{current_status}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
