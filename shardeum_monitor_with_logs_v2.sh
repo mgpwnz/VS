@@ -161,16 +161,58 @@ def check_operator_status():
         log_status(f"Error executing status command: {e}")
         return ""
 
+def check_status_and_restart_operator():
+    """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
+    output = check_operator_status()
+    
+    # Відстежуємо попередній статус, щоб уникнути спаму
+    previous_status = None
+
+    for line in output.splitlines():
+        if "state" in line:
+            current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
+            if current_status in STATUSES:
+                current_status_display = STATUSES[current_status]  # Отримуємо статус з графічним символом
+            else:
+                current_status_display = current_status  # Якщо статус не вказаний, залишаємо як є
+
+            if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
+                previous_status = current_status
+                log_status(f"State changed to '{current_status_display}'")
+            else:
+                log_status(f"State is '{current_status_display}'")  # Логування поточного статусу
+
+            if current_status == "stopped":
+                log_status("State is 'stopped', starting the operator...")
+                restart_operator()
+                return False
+
+    gui_status_result = subprocess.run(
+        ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
+        capture_output=True,
+        text=True
+    )
+    gui_output = gui_status_result.stdout
+    if "operator gui not running!" in gui_output:
+        log_status("GUI is not running, starting the GUI...")
+        start_gui()
+
+    return True
+
 def restart_operator():
-    """Функція для перезапуску оператора."""
+    """Функція для запуску оператора."""
     try:
-        subprocess.run(
-            ["docker", "exec", "shardeum-dashboard", "operator-cli", "restart"],
-            check=True
+        result = subprocess.run(
+            ["docker", "exec", "shardeum-dashboard", "operator-cli", "start"],
+            capture_output=True,
+            text=True
         )
-        log_status("Operator restarted successfully.")
+        if result.returncode == 0:
+            log_status("Operator started successfully!")
+        else:
+            log_status(f"Failed to start the operator: {result.stderr}")
     except subprocess.CalledProcessError as e:
-        log_status(f"Error restarting operator: {e}")
+        log_status(f"Error executing start command: {e}")
 
 def start_gui():
     """Функція для запуску GUI."""
@@ -180,7 +222,10 @@ def start_gui():
             capture_output=True,
             text=True
         )
-        log_status(f"GUI started. Output: {gui_result.stdout} {gui_result.stderr}")
+        if gui_result.returncode == 0:
+            log_status("GUI started successfully!")
+        else:
+            log_status(f"Failed to start the GUI: {gui_result.stderr}")
     except subprocess.CalledProcessError as e:
         log_status(f"Error executing GUI start command: {e}")
 
