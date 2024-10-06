@@ -156,28 +156,18 @@ def send_status_change_message(current_status, previous_status):
     }
     try:
         response = requests.post(url, data=data)
-        if response.status_code != 200:
-            log_status(f"Failed to send message: {response.text}")
-    except Exception as e:
-        log_status(f"Error sending Telegram message: {e}")
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")
 
-def send_default_message(status):
+def send_default_message(current_status):
     """Функція для відправки стандартного повідомлення у Telegram."""
     if INCLUDE_IP:
         prefix = f"{HOSTNAME} {SERVER_IP} "
     else:
         prefix = f"{HOSTNAME} "
 
-    if status == "stopped":
-        message = f"{prefix}Container is not running ❌"
-    elif status == "active":
-        message = f"{prefix}Operator started ✅"
-    elif status == "waiting-for-network":
-        message = f"{prefix}State changed from ❌ offline to ⏳ waiting-for-network"
-    elif status == "standby":
-        message = f"{prefix}Container started 🟢"
-    else:
-        message = f"{prefix}Unknown state: {status}"
+    message = f"{prefix}{STATUSES[current_status]}"
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
@@ -186,163 +176,69 @@ def send_default_message(status):
     }
     try:
         response = requests.post(url, data=data)
-        if response.status_code != 200:
-            log_status(f"Failed to send message: {response.text}")
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")
+
+def check_container_status():
+    """Перевіряє статус контейнера Shardeum."""
+    try:
+        result = subprocess.run(["docker", "inspect", "--format", "{{.State.Status}}", "shardeum"], capture_output=True, text=True)
+        return result.stdout.strip()
     except Exception as e:
-        log_status(f"Error sending Telegram message: {e}")
-
-def start_container(container_name):
-    """Функція для запуску контейнера."""
-    try:
-        result = subprocess.run(
-            ["docker", "start", container_name],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            log_status(f"Container {container_name} started successfully!")
-        else:
-            log_status(f"Failed to start container: {result.stderr}")
-            # Можливо, варто надіслати повідомлення про цю помилку у Telegram
-            send_default_message("stopped")
-    except subprocess.CalledProcessError as e:
-        log_status(f"Error starting container: {e}")
-
-
-def start_container(container_name):
-    """Функція для запуску контейнера."""
-    try:
-        result = subprocess.run(
-            ["docker", "start", container_name],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            log_status(f"Container {container_name} started successfully!")
-        else:
-            log_status(f"Failed to start container: {result.stderr}")
-    except subprocess.CalledProcessError as e:
-        log_status(f"Error starting container: {e}")
-
-def check_operator_status():
-    """Функція для перевірки статусу оператора."""
-    try:
-        result = subprocess.run(
-            ["docker", "exec", "shardeum-dashboard", "operator-cli", "status"],
-            capture_output=True,
-            text=True
-        )
-        output = result.stdout.strip()
-
-        if result.returncode != 0:
-            log_status(f"Error checking operator status: {result.stderr.strip()}")
-            return "unknown"
-
-        if "active" in output:  # Змінити на ваш реальний статус
-            return "active"
-        elif "stopped" in output:
-            return "stopped"
-        else:
-            log_status(f"Unexpected output from operator status: {output}")
-            return "unknown"
-
-    except Exception as e:
-        log_status(f"Exception during operator status check: {str(e)}")
+        print(f"Error checking container status: {e}")
         return "unknown"
 
+def restart_container():
+    """Перезапускає контейнер Shardeum."""
+    try:
+        subprocess.run(["docker", "restart", "shardeum"], check=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
-def check_status_and_restart_operator():
-    """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
-    output = check_operator_status()
+# Головна логіка виконання
+def main():
+    last_status = load_last_status()
     
-    previous_status = load_last_status()
+    while True:
+        current_status = check_container_status()
+        
+        if current_status != last_status:
+            log_status(current_status, last_status)
+            save_last_status(current_status)
 
-    for line in output.splitlines():
-        if "state" in line:
-            current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
-            
-            # Змінюємо логіку для контролю статусу контейнера
-            if current_status == "stopped":
-                log_status("stopped")
-                log_status("Starting the operator...", previous_status)
-                restart_operator()
-                return False
-            elif current_status == "active":
-                log_status("active", previous_status)
-            elif current_status == "standby":
-                log_status("standby", previous_status)  # Додаємо обробку для standby
-            else:
-                log_status("unknown")  # Якщо статус не вказаний, вважаємо його невідомим
-
-    # Додати затримку перед перевіркою статусу контейнера
-    time.sleep(10)  # Затримка 10 секунд
-
-    # Перевірка статусу контейнера
-    if is_container_running("shardeum-dashboard"):
-        log_status("Container is running 🟢")
-    else:
-        log_status("Container is not running ❌")
-        start_container("shardeum-dashboard")
-
-    gui_status_result = subprocess.run(
-        ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
-        capture_output=True,
-        text=True
-    )
-    gui_output = gui_status_result.stdout
-    if "operator gui not running!" in gui_output:
-        log_status("GUI is not running, starting the GUI...")
-        start_gui()
-
-    return True
-
-
-def restart_operator():
-    """Функція для запуску оператора."""
-    try:
-        result = subprocess.run(
-            ["docker", "exec", "shardeum-dashboard", "operator-cli", "start"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            log_status("Operator started successfully!")
-        else:
-            log_status(f"Failed to start the operator: {result.stderr}")
-    except subprocess.CalledProcessError as e:
-        log_status(f"Error executing start command: {e}")
-
-def start_gui():
-    """Функція для запуску GUI."""
-    try:
-        gui_result = subprocess.run(
-            ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "start"],
-            capture_output=True,
-            text=True
-        )
-        if gui_result.returncode == 0:
-            log_status("GUI started successfully!")
-        else:
-            log_status(f"Failed to start GUI: {gui_result.stderr}")
-    except subprocess.CalledProcessError as e:
-        log_status(f"Error starting GUI: {e}")
+        # Затримка перед наступною перевіркою
+        time.sleep(5)  # Перевіряємо статус кожні 5 секунд
 
 if __name__ == "__main__":
-    if not is_container_running("shardeum-dashboard"):
-        log_status("Container 'shardeum-dashboard' is not running, starting the container...")
-        start_container("shardeum-dashboard")
+    main()
+EOF
 
-    check_status_and_restart_operator()
+# === Налаштування systemd ===
+# Створюємо сервіс systemd
+cat << EOF > /etc/systemd/system/shardeum_monitor.service
+[Unit]
+Description=Shardeum Monitor
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/bin/python3 $SCRIPT_PATH
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 # Створюємо таймер systemd
-TIMER_PATH="/etc/systemd/system/shardeum_monitor.timer"
-cat << EOF > "$TIMER_PATH"
+cat << EOF > /etc/systemd/system/shardeum_monitor.timer
 [Unit]
-Description=Shardeum Monitor Timer
+Description=Runs Shardeum Monitor every $timer_interval minutes
 
 [Timer]
-OnBootSec=10min
+OnActiveSec=0
 OnUnitActiveSec=${timer_interval}min
 Unit=shardeum_monitor.service
 
@@ -350,20 +246,9 @@ Unit=shardeum_monitor.service
 WantedBy=timers.target
 EOF
 
-# Створюємо systemd-сервіс
-SERVICE_PATH="/etc/systemd/system/shardeum_monitor.service"
-cat << EOF > "$SERVICE_PATH"
-[Unit]
-Description=Shardeum Monitor Service
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 "$SCRIPT_PATH"
-EOF
-
-# Перезапуск systemd для врахування нового таймера
+# === Активуємо та запускаємо таймер ===
 systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v1.3!"
+echo "Скрипт завершив виконання. Таймер системи Shardeum Monitor активовано."
