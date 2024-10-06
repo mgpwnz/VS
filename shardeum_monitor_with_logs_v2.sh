@@ -99,25 +99,46 @@ def log_status(status, prev_status=None):
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    if prev_status and prev_status in STATUSES:
-        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] State changed from '{STATUSES[prev_status]}' to '{STATUSES[status]}'"
+    # Відображення статусів з графічними символами
+    status_mapping = {
+        "offline": "❌ offline",
+        "waiting-for-network": "⏳ waiting-for-network",
+        "standby": "🟢 standby",
+        "active": "🔵 active",
+        "stopped": "❌ stopped",
+        "unknown": "❓ unknown"  # Додайте новий статус
+    }
+
+    # Форматування hostname та IP, якщо включено
+    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
+
+    # Змінні для відправки повідомлень
+    message = ""
+
+    # Перевірка на попередній статус
+    if prev_status and prev_status in status_mapping:
+        # Якщо статус змінився, формуємо повідомлення про зміну статусу
+        current_status_display = status_mapping.get(status, "❓ unknown")  # Використовуйте статус, якщо він існує
+        prev_status_display = status_mapping.get(prev_status, "❓ unknown")
+        message = f"{prefix}State changed from {prev_status_display} to {current_status_display}"
     else:
-        log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
-    
+        # Якщо статус новий або без зміни, формуємо повідомлення про поточний статус
+        current_status_display = status_mapping.get(status, "❓ unknown")  # Використовуйте статус, якщо він існує
+        message = f"{prefix}{current_status_display}"
+
     # Запис у лог-файл
     if not os.path.exists(LOG_PATH):
         open(LOG_PATH, 'w').close()
 
     with open(LOG_PATH, "a") as log_file:
-        log_file.write(log_message + "\n")
+        log_file.write(f"{current_time} {message}\n")
 
-    # Відправка повідомлень
-    if prev_status and prev_status in STATUSES:
-        # Якщо статус змінився, відправляємо відповідне повідомлення
+    # Відправка повідомлення
+    if prev_status and prev_status in status_mapping:
         send_status_change_message(status, prev_status)
     else:
-        # Відправка повідомлення без зміни статусу
         send_default_message(status)
+
 
 def send_status_change_message(current_status, previous_status):
     """Функція для відправки повідомлення про зміну статусу у Telegram."""
@@ -207,19 +228,23 @@ def check_operator_status():
             text=True
         )
         output = result.stdout.strip()
+
         if result.returncode != 0:
-            log_status(f"Error checking operator status: {result.stderr.strip()}")  # Логування помилки
+            log_status(f"Error checking operator status: {result.stderr.strip()}")
             return "unknown"
 
-        if "running" in output:
+        if "active" in output:  # Змінити на ваш реальний статус
             return "active"
         elif "stopped" in output:
             return "stopped"
         else:
+            log_status(f"Unexpected output from operator status: {output}")
             return "unknown"
+
     except Exception as e:
         log_status(f"Exception during operator status check: {str(e)}")
         return "unknown"
+
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
@@ -321,4 +346,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v9!"
+echo "Скрипт успішно встановлений і запущений v1.0!"
