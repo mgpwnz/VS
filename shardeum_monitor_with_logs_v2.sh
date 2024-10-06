@@ -146,8 +146,11 @@ def send_status_change_message(current_status, previous_status):
         prefix = f"{HOSTNAME} {SERVER_IP} "
     else:
         prefix = f"{HOSTNAME} "
+    
+    current_status_display = STATUSES.get(current_status, "❓ unknown")  
+    previous_status_display = STATUSES.get(previous_status, "❓ unknown")  
 
-    message = f"{prefix}State changed from {STATUSES[previous_status]} to {STATUSES[current_status]}"
+    message = f"{prefix}State changed from {previous_status_display} to {current_status_display}"
     
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
