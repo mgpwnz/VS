@@ -103,7 +103,7 @@ def log_status(status, prev_status=None):
     status_mapping = {
         "offline": "❌ offline",
         "waiting-for-network": "⏳ waiting-for-network",
-        "standby": "🟢 standby",
+        "standby": "🟢 standby",   # Додаємо статус standby
         "active": "🔵 active",
         "stopped": "❌ stopped",
         "unknown": "❓ unknown"  # Додайте новий статус
@@ -138,8 +138,6 @@ def log_status(status, prev_status=None):
         send_status_change_message(status, prev_status)
     else:
         send_default_message(status)
-
-
 
 def send_status_change_message(current_status, previous_status):
     """Функція для відправки повідомлення про зміну статусу у Telegram."""
@@ -265,6 +263,8 @@ def check_status_and_restart_operator():
                 return False
             elif current_status == "active":
                 log_status("active", previous_status)
+            elif current_status == "standby":
+                log_status("standby", previous_status)  # Додаємо обробку для standby
             else:
                 log_status("unknown")  # Якщо статус не вказаний, вважаємо його невідомим
 
@@ -289,6 +289,7 @@ def check_status_and_restart_operator():
         start_gui()
 
     return True
+
 
 def restart_operator():
     """Функція для запуску оператора."""
