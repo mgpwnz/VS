@@ -26,9 +26,11 @@ import subprocess
 import pytz
 from datetime import datetime
 import requests
+import os
 
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
+LOG_PATH = "$LOG_PATH"
 
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
@@ -37,7 +39,8 @@ def log_status(status):
 
     log_message = f"{current_time} Shardeum operator status: {status}\n"
     
-    with open("/root/shardeum_monitor.log", "a") as log_file:
+    # Запис у файл з обмеженням на відкриті файли
+    with open(LOG_PATH, "a") as log_file:
         log_file.write(log_message)
     
     # Якщо включено Telegram сповіщення, відправляємо статус
@@ -86,8 +89,8 @@ def start_container(container_name):
     except subprocess.CalledProcessError as e:
         log_status(f"Error starting container: {e}")
 
-def check_status_and_restart_operator():
-    """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
+def check_operator_status():
+    """Функція для перевірки статусу оператора."""
     try:
         result = subprocess.run(
             ["docker", "exec", "shardeum-dashboard", "operator-cli", "status"],
@@ -95,30 +98,35 @@ def check_status_and_restart_operator():
             text=True
         )
         output = result.stdout
-        
-        for line in output.splitlines():
-            if "state" in line:
-                if "stopped" in line:
-                    log_status("State is 'stopped', starting the operator...")
-                    restart_operator()
-                    return False
-                else:
-                    log_status(f"State is 'standby'")  # Записуємо тільки час та статус
-
-        gui_status_result = subprocess.run(
-            ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
-            capture_output=True,
-            text=True
-        )
-        gui_output = gui_status_result.stdout
-        if "operator gui not running!" in gui_output:
-            log_status("GUI is not running, starting the GUI...")
-            start_gui()
-
-        return True
+        return output
     except subprocess.CalledProcessError as e:
         log_status(f"Error executing status command: {e}")
-        return False
+        return ""
+
+def check_status_and_restart_operator():
+    """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
+    output = check_operator_status()
+    
+    for line in output.splitlines():
+        if "state" in line:
+            if "stopped" in line:
+                log_status("State is 'stopped', starting the operator...")
+                restart_operator()
+                return False
+            else:
+                log_status(f"State is '{line.strip()}'")  # Записуємо тільки статус
+
+    gui_status_result = subprocess.run(
+        ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
+        capture_output=True,
+        text=True
+    )
+    gui_output = gui_status_result.stdout
+    if "operator gui not running!" in gui_output:
+        log_status("GUI is not running, starting the GUI...")
+        start_gui()
+
+    return True
 
 def restart_operator():
     """Функція для запуску оператора."""
@@ -162,7 +170,8 @@ def main():
     check_status_and_restart_operator()
 
 # Виклик основної функції
-main()
+if __name__ == "__main__":
+    main()
 EOF
 
 # Задаємо виконувані права для скрипта
