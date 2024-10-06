@@ -62,6 +62,7 @@ import os
 import socket
 import time
 
+# Конфігурація Telegram
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
@@ -101,14 +102,7 @@ def log_status(status, prev_status=None):
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
     # Відображення статусів з графічними символами
-    status_mapping = {
-        "offline": "❌ offline",
-        "waiting-for-network": "⏳ waiting-for-network",
-        "standby": "🟢 standby",   # Додаємо статус standby
-        "active": "🔵 active",
-        "stopped": "❌ stopped",
-        "unknown": "❓ unknown"  # Додайте новий статус
-    }
+    status_mapping = STATUSES
 
     # Форматування hostname та IP, якщо включено
     prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
@@ -118,19 +112,14 @@ def log_status(status, prev_status=None):
 
     # Перевірка на попередній статус
     if prev_status and prev_status in status_mapping:
-        # Якщо статус змінився, формуємо повідомлення про зміну статусу
-        current_status_display = status_mapping.get(status, "❓ unknown")  # Використовуйте статус, якщо він існує
+        current_status_display = status_mapping.get(status, "❓ unknown")
         prev_status_display = status_mapping.get(prev_status, "❓ unknown")
         message = f"{prefix}State changed from {prev_status_display} to {current_status_display}"
     else:
-        # Якщо статус новий або без зміни, формуємо повідомлення про поточний статус
-        current_status_display = status_mapping.get(status, "❓ unknown")  # Використовуйте статус, якщо він існує
+        current_status_display = status_mapping.get(status, "❓ unknown")
         message = f"{prefix}{current_status_display}"
 
     # Запис у лог-файл
-    if not os.path.exists(LOG_PATH):
-        open(LOG_PATH, 'w').close()
-
     with open(LOG_PATH, "a") as log_file:
         log_file.write(f"{current_time} {message}\n")
 
@@ -142,13 +131,10 @@ def log_status(status, prev_status=None):
 
 def send_status_change_message(current_status, previous_status):
     """Функція для відправки повідомлення про зміну статусу у Telegram."""
-    if INCLUDE_IP:
-        prefix = f"{HOSTNAME} {SERVER_IP} "
-    else:
-        prefix = f"{HOSTNAME} "
+    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
     
-    current_status_display = STATUSES.get(current_status, "❓ unknown")  
-    previous_status_display = STATUSES.get(previous_status, "❓ unknown")  
+    current_status_display = STATUSES.get(current_status, "❓ unknown")
+    previous_status_display = STATUSES.get(previous_status, "❓ unknown")
 
     message = f"{prefix}State changed from {previous_status_display} to {current_status_display}"
     
@@ -165,10 +151,7 @@ def send_status_change_message(current_status, previous_status):
 
 def send_default_message(current_status):
     """Функція для відправки стандартного повідомлення у Telegram."""
-    if INCLUDE_IP:
-        prefix = f"{HOSTNAME} {SERVER_IP} "
-    else:
-        prefix = f"{HOSTNAME} "
+    prefix = f"{HOSTNAME} {SERVER_IP} " if INCLUDE_IP else f"{HOSTNAME} "
 
     message = f"{prefix}{STATUSES[current_status]}"
 
