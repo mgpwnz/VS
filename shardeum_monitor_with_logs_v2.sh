@@ -294,4 +294,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений!"
+echo "Скрипт успішно встановлений і запущений v4!"
