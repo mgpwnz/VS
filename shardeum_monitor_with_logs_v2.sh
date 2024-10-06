@@ -149,10 +149,12 @@ def send_default_message(status):
 
     if status == "stopped":
         message = f"{prefix}Container is not running ❌"
-    elif status == "standby":
-        message = f"{prefix}Container started 🟢"
     elif status == "active":
         message = f"{prefix}Operator started ✅"
+    elif status == "waiting-for-network":
+        message = f"{prefix}State changed from ❌ offline to ⏳ waiting-for-network"
+    elif status == "standby":
+        message = f"{prefix}Container started 🟢"
     else:
         message = f"{prefix}Unknown state: {status}"
 
@@ -167,7 +169,6 @@ def send_default_message(status):
             log_status(f"Failed to send message: {response.text}")
     except Exception as e:
         log_status(f"Error sending Telegram message: {e}")
-
 
 def is_container_running(container_name):
     """Функція для перевірки, чи запущений контейнер."""
@@ -205,11 +206,16 @@ def check_operator_status():
             capture_output=True,
             text=True
         )
-        output = result.stdout
-        return output
+        output = result.stdout.strip()
+        if "running" in output:
+            return "active"
+        elif "stopped" in output:
+            return "stopped"
+        else:
+            return "unknown"
     except subprocess.CalledProcessError as e:
         log_status(f"Error executing status command: {e}")
-        return ""
+        return "unknown"
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
@@ -217,22 +223,18 @@ def check_status_and_restart_operator():
     
     previous_status = load_last_status()
 
-    for line in output.splitlines():
-        if "state" in line:
-            current_status = line.split(":", 1)[1].strip()  # Отримуємо статус
-            if current_status in STATUSES:
-                current_status_display = STATUSES[current_status]  # Отримуємо статус з графічним символом
-            else:
-                current_status_display = current_status  # Якщо статус не вказаний, залишаємо як є
+    if output == "unknown":
+        log_status("Не вдалося отримати статус оператора.")
+        return False
+    
+    if previous_status != output:  # Якщо статус змінився, логування та повідомлення
+        log_status(output, previous_status)
+        save_last_status(output)
 
-            if current_status != previous_status:  # Якщо статус змінився, логування та повідомлення
-                log_status(f"State changed to '{current_status_display}'", previous_status)
-                save_last_status(current_status)
-
-            if current_status == "stopped":
-                log_status("State is 'stopped', starting the operator...")
-                restart_operator()
-                return False
+    if output == "stopped":
+        log_status("State is 'stopped', starting the operator...")
+        restart_operator()
+        return False
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
@@ -315,4 +317,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v7!"
+echo "Скрипт успішно встановлений і запущений v8!"
