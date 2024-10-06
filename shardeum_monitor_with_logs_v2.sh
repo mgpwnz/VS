@@ -78,9 +78,9 @@ def log_status(status):
 def send_telegram_message(status):
     """Функція для відправки повідомлення у Telegram."""
     if INCLUDE_IP:
-        message = f"[{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
+        message = f"{HOSTNAME} {SERVER_IP} {status}"
     else:
-        message = f"[{HOSTNAME}] Shardeum operator status: {status}"
+        message = f"{HOSTNAME} {status}"
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
