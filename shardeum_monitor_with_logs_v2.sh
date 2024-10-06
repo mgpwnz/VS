@@ -75,7 +75,8 @@ STATUSES = {
     "offline": "❌ offline",
     "waiting-for-network": "⏳ waiting-for-network",
     "standby": "🟢 standby",
-    "active": "🔵 active"
+    "active": "🔵 active",
+    "stopped": "❌ stopped"  
 }
 
 # Змінна для зберігання попереднього статусу
@@ -98,7 +99,7 @@ def log_status(status, prev_status=None):
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    if prev_status:
+    if prev_status and prev_status in STATUSES:
         log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] State changed from '{STATUSES[prev_status]}' to '{STATUSES[status]}'"
     else:
         log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}"
@@ -110,7 +111,7 @@ def log_status(status, prev_status=None):
     with open(LOG_PATH, "a") as log_file:
         log_file.write(log_message + "\n")
 
-    if prev_status:
+    if prev_status and prev_status in STATUSES:
         # Якщо статус змінився, відправляємо відповідне повідомлення
         if TELEGRAM_BOT_TOKEN and CHAT_ID:
             send_telegram_message(status, prev_status)
