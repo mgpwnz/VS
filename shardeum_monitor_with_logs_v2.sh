@@ -60,6 +60,7 @@ from datetime import datetime
 import requests
 import os
 import socket
+import time
 
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
@@ -365,4 +366,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v1.2!"
+echo "Скрипт успішно встановлений і запущений v1.3!"
