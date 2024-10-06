@@ -36,6 +36,15 @@ SERVER_IP = socket.gethostbyname(socket.gethostname())  # Отримуємо IP-
 
 previous_status = None
 
+# ANSI escape codes for colors
+COLORS = {
+    "offline": "\033[91m",       # Red
+    "waiting-for-network": "\033[93m",  # Yellow
+    "standby": "\033[92m",       # Green
+    "active": "\033[94m",        # Blue
+    "reset": "\033[0m"           # Reset to default
+}
+
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
@@ -114,9 +123,11 @@ def check_status_and_restart_operator():
     
     for line in output.splitlines():
         if "state" in line:
-            current_status = line.strip()  # Записуємо лише статус
+            current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
+            color = COLORS.get(current_status, COLORS["reset"])  # Отримуємо колір для статусу
+            
             if previous_status != current_status:  # Якщо статус змінився
-                log_status(f"State changed to '{current_status}'")
+                log_status(f"State changed to '{color}{current_status}{COLORS['reset']}'")
                 previous_status = current_status
             
             if "stopped" in current_status:
@@ -124,7 +135,7 @@ def check_status_and_restart_operator():
                 restart_operator()
                 return False
             else:
-                log_status(f"State is '{current_status}'")  # Записуємо тільки статус
+                log_status(f"State is '{color}{current_status}{COLORS['reset']}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
