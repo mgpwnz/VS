@@ -207,14 +207,18 @@ def check_operator_status():
             text=True
         )
         output = result.stdout.strip()
+        if result.returncode != 0:
+            log_status(f"Error checking operator status: {result.stderr.strip()}")  # Логування помилки
+            return "unknown"
+
         if "running" in output:
             return "active"
         elif "stopped" in output:
             return "stopped"
         else:
             return "unknown"
-    except subprocess.CalledProcessError as e:
-        log_status(f"Error executing status command: {e}")
+    except Exception as e:
+        log_status(f"Exception during operator status check: {str(e)}")
         return "unknown"
 
 def check_status_and_restart_operator():
@@ -317,4 +321,4 @@ systemctl daemon-reload
 systemctl enable shardeum_monitor.timer
 systemctl start shardeum_monitor.timer
 
-echo "Скрипт успішно встановлений і запущений v8!"
+echo "Скрипт успішно встановлений і запущений v9!"
