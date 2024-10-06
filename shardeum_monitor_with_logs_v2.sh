@@ -170,6 +170,23 @@ def check_container_status():
         print(f"Error checking container status: {e}")
         return "unknown"
 
+def start_validator():
+    """Запускає валідатор, якщо він зупинений."""
+    subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "start"])
+
+def check_gui_status():
+    """Перевіряє статус GUI Shardeum."""
+    try:
+        result = subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"], capture_output=True, text=True)
+        return result.stdout.strip()
+    except Exception as e:
+        print(f"Error checking GUI status: {e}")
+        return "unknown"
+
+def start_gui():
+    """Запускає GUI, якщо він не онлайн."""
+    subprocess.run(["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "start"])
+
 # Головна логіка виконання
 def main():
     last_status = load_last_status()
@@ -177,6 +194,17 @@ def main():
     while True:
         current_status = check_container_status()
         
+        # Запускаємо валідатор, якщо він зупинений
+        if current_status == "stopped":
+            print("Validator is stopped. Starting...")
+            start_validator()
+        
+        # Перевіряємо статус GUI
+        gui_status = check_gui_status()
+        if gui_status != "online":
+            print("GUI is not online. Starting GUI...")
+            start_gui()
+
         if current_status != last_status:
             log_status(current_status, last_status)
             save_last_status(current_status)
