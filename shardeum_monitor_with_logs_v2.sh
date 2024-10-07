@@ -150,13 +150,14 @@ def check_status_and_restart_operator():
                 previous_status = current_status
                 send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
             
+            else:
+                # Якщо статус не змінився, тільки логування
+                log_status(f"State is '{emoji_status}'")
+
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
-            else:
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                log_status(f"State is '{emoji_status}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
