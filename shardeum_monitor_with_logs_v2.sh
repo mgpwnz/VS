@@ -146,8 +146,11 @@ def check_status_and_restart_operator():
         if "state" in line:
             current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
 
-            # Send notification only if the state has changed from both previous and last sent statuses
-            if previous_status != current_status and last_sent_status != current_status:  
+            # Debugging: Log the current and previous status
+            log_status(f"Current status: {current_status}, Previous status: {previous_status}, Last sent status: {last_sent_status}")
+
+            # Send notification only if the state has changed
+            if previous_status != current_status:
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
                 send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
@@ -155,11 +158,6 @@ def check_status_and_restart_operator():
 
             # Always update previous status
             previous_status = current_status  # Оновлюємо попередній статус
-
-
-            else:
-                # Якщо статус не змінився, тільки логування
-                log_status(f"Current status: {current_status}, Last sent status: {last_sent_status}")
 
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
@@ -177,6 +175,7 @@ def check_status_and_restart_operator():
         start_gui()
 
     return True
+
 
 def restart_operator():
     """Функція для запуску оператора."""
