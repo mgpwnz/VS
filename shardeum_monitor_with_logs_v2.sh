@@ -8,10 +8,12 @@ pip3 install pytz requests
 # === Запит на використання Telegram бота ===
 read -p "Чи хочете ви використовувати Telegram бот для сповіщень (Y/N)? " use_telegram
 
+include_ip="N"
 if [[ "$use_telegram" == "Y" || "$use_telegram" == "y" ]]; then
     while true; do
         read -p "Введіть свій TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
         read -p "Введіть свій CHAT_ID: " CHAT_ID
+        read -p "Чи хочете ви включати IP-адресу сервера в повідомлення (Y/N)? " include_ip
 
         # Перевірка відправки тестового повідомлення
         test_message="Тестове повідомлення для перевірки."
@@ -49,7 +51,7 @@ import socket
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
-SERVER_IP = socket.gethostbyname(socket.gethostname())  # Отримуємо IP-адресу сервера
+SERVER_IP = socket.gethostbyname(socket.gethostname()) if "$include_ip" == "Y" else ""  # IP-адреса сервера включається за бажанням
 HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
 
 previous_status = None
@@ -67,7 +69,7 @@ def log_status(status):
     timezone = pytz.timezone('Europe/Kiev')  # Задаємо часовий пояс
     current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
 
-    log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n"
+    log_message = f"{current_time} [{HOSTNAME}][{SERVER_IP}] Shardeum operator status: {status}\n" if SERVER_IP else f"{current_time} [{HOSTNAME}] Shardeum operator status: {status}\n"
     
     # Запис у файл з обмеженням на відкриті файли
     with open(LOG_PATH, "a") as log_file:
@@ -75,13 +77,10 @@ def log_status(status):
     
     # Якщо включено Telegram сповіщення, відправляємо статус
     if TELEGRAM_BOT_TOKEN and CHAT_ID:
-        send_telegram_message(log_message)
+        send_telegram_message(f"[{HOSTNAME}]{status}")
 
 def send_telegram_message(message):
     """Функція для відправки повідомлення у Telegram."""
-    if not TELEGRAM_BOT_TOKEN or not CHAT_ID:
-        return  # Якщо немає TOKEN або CHAT_ID, не відправляємо повідомлення
-    
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
         "chat_id": CHAT_ID,
@@ -149,8 +148,7 @@ def check_status_and_restart_operator():
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
                 previous_status = current_status
-                if TELEGRAM_BOT_TOKEN and CHAT_ID:  # Перевірка перед відправкою
-                    send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
             
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
@@ -236,21 +234,36 @@ Requires=docker.service
 ExecStart=/usr/bin/python3 $SCRIPT_PATH
 StandardOutput=append:$LOG_PATH
 StandardError=append:$LOG_PATH
-Restart=always
-RestartSec=10
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Перезапускаємо systemd, щоб він побачив новий сервіс
+# === Створення системного таймера для виконання сервісу кожні 15 хвилин ===
+
+TIMER_PATH="/etc/systemd/system/check_shardeum_status.timer"
+
+cat << EOF > $TIMER_PATH
+[Unit]
+Description=Run Shardeum Status Check every 15 minutes
+Wants=check_shardeum_status.service
+
+[Timer]
+OnBootSec=1min          
+OnUnitActiveSec=15min   
+Persistent=true          
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Перезавантажуємо systemd, щоб застосувати зміни
 systemctl daemon-reload
 
-# Вмикаємо сервіс для автозапуску
+# Активуємо та запускаємо сервіс та таймер
 systemctl enable check_shardeum_status.service
+systemctl enable check_shardeum_status.timer
+systemctl start check_shardeum_status.timer
 
-# Запускаємо сервіс
-systemctl start check_shardeum_status.service
-
-echo "Скрипт успішно встановлено та запущено як системний сервіс."
-echo "Логи можна переглянути у файлі: $LOG_PATH"
+echo "Сервіс та таймер для моніторингу Shardeum Dashboard успішно налаштовані і запущені. Логи зберігаються у $LOG_PATH."
