@@ -75,13 +75,14 @@ def log_status(status):
     # Запис у файл з обмеженням на відкриті файли
     with open(LOG_PATH, "a") as log_file:
         log_file.write(log_message)
-    
+
     # Якщо включено Telegram сповіщення, відправляємо статус
     if TELEGRAM_BOT_TOKEN and CHAT_ID:
-        send_telegram_message(f"[{HOSTNAME}]{status}")
+        send_telegram_message(status)
 
 def send_telegram_message(message):
     """Функція для відправки повідомлення у Telegram."""
+    message = f"[{HOSTNAME}] {message}"  # Форматування повідомлення
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
         "chat_id": CHAT_ID,
@@ -145,10 +146,11 @@ def check_status_and_restart_operator():
         if "state" in line:
             current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
             
-            if previous_status != current_status:  # Якщо статус змінився
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                log_status(f"State changed to '{emoji_status}'")
-                previous_status = current_status
+                if previous_status != current_status:  # Якщо статус змінився
+                    emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
+                    log_status(f"State changed to '{emoji_status}'")
+                    previous_status = current_status
+                    send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
 
                 # Відправляємо повідомлення тільки, якщо статус змінився від останнього надісланого
                 if last_sent_status != current_status:
