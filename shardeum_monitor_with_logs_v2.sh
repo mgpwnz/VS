@@ -159,7 +159,7 @@ def check_status_and_restart_operator():
 
             else:
                 # Якщо статус не змінився, тільки логування
-                log_status(f"State is '{current_status}'")
+                log_status(f"Current status: {current_status}, Last sent status: {last_sent_status}")
 
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
