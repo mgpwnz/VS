@@ -139,7 +139,7 @@ def check_operator_status():
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
-    global previous_status  # Дозволяємо змінювати глобальну змінну
+    global previous_status, last_sent_status  # Дозволяємо змінювати глобальні змінні
     output = check_operator_status()
 
     for line in output.splitlines():
@@ -149,16 +149,22 @@ def check_status_and_restart_operator():
             if previous_status != current_status:  # Якщо статус змінився
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
-                previous_status = current_status
-                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+
+                # Відправляємо повідомлення тільки, якщо статус змінився від останнього надісланого
+                if last_sent_status != current_status:
+                    send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                    last_sent_status = current_status  # Оновлюємо останній надісланий статус
+
+                previous_status = current_status  # Оновлюємо попередній статус
+
+            else:
+                # Якщо статус не змінився, тільки логування
+                log_status(f"State is '{current_status}'")
 
             if "stopped" in current_status:
                 log_status("State is 'stopped', starting the operator...")
                 restart_operator()
                 return False
-            else:
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
-                log_status(f"State is '{emoji_status}'")  # Записуємо тільки статус
 
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
@@ -171,7 +177,6 @@ def check_status_and_restart_operator():
         start_gui()
 
     return True
-
 
 def restart_operator():
     """Функція для запуску оператора."""
