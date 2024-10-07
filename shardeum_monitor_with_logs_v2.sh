@@ -55,6 +55,7 @@ SERVER_IP = socket.gethostbyname(socket.gethostname()) if "$include_ip" == "Y" e
 HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
 
 previous_status = None
+last_sent_status = None  # Змінна для збереження останнього відправленого статусу
 
 # Словник статусів з графічними символами
 status_emojis = {
@@ -137,7 +138,7 @@ def check_operator_status():
 
 def check_status_and_restart_operator():
     """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
-    global previous_status  # Дозволяємо змінювати глобальну змінну
+    global previous_status, last_sent_status  # Дозволяємо змінювати глобальні змінні
     output = check_operator_status()
     
     for line in output.splitlines():
@@ -148,7 +149,11 @@ def check_status_and_restart_operator():
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
                 previous_status = current_status
-                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+
+                # Відправляємо повідомлення тільки, якщо статус змінився від останнього надісланого
+                if last_sent_status != current_status:
+                    send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                    last_sent_status = current_status  # Оновлюємо останній надісланий статус
             
             else:
                 # Якщо статус не змінився, тільки логування
@@ -217,14 +222,9 @@ if __name__ == "__main__":
     main()
 EOF
 
-# Задаємо виконувані права для скрипта
-chmod +x $SCRIPT_PATH
-
-# === Створення системного сервісу ===
-
+# === Створення сервісу systemd для виконання скрипту ===
 SERVICE_PATH="/etc/systemd/system/check_shardeum_status.service"
 
-# Створюємо systemd сервіс для автозапуску скрипта
 cat << EOF > $SERVICE_PATH
 [Unit]
 Description=Check Shardeum Container and Operator Status
