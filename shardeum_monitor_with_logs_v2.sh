@@ -47,6 +47,7 @@ from datetime import datetime
 import requests
 import os
 import socket
+import urllib.parse
 
 TELEGRAM_BOT_TOKEN = "$TELEGRAM_BOT_TOKEN"
 CHAT_ID = "$CHAT_ID"
@@ -105,10 +106,15 @@ def send_telegram_message(message):
     """Функція для відправки повідомлення у Telegram."""
     message = f"[{HOSTNAME}] {message}"  # Форматування повідомлення
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    
+    # Properly encode the message
+    message_encoded = urllib.parse.quote(message)
+    
     data = {
         "chat_id": CHAT_ID,
-        "text": message
+        "text": message_encoded
     }
+    
     try:
         response = requests.post(url, data=data)
         if response.status_code != 200:
