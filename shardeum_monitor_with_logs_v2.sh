@@ -53,7 +53,7 @@ CHAT_ID = "$CHAT_ID"
 LOG_PATH = "$LOG_PATH"
 SERVER_IP = socket.gethostbyname(socket.gethostname()) if "$include_ip" == "Y" else ""  # IP-адреса сервера включається за бажанням
 HOSTNAME = "$HOSTNAME"  # Отримуємо ім'я хоста
-
+STATUS_FILE = "/tmp/shardeum_status.txt"  # Path to store the statuses
 previous_status = None
 last_sent_status = None  # Змінна для збереження останнього відправленого статусу
 
@@ -64,6 +64,27 @@ status_emojis = {
     "standby": "🟢 standby",
     "active": "🔵 active"
 }
+def load_status():
+    """Load previous and last sent statuses from file."""
+    global previous_status, last_sent_status
+    try:
+        with open(STATUS_FILE, "r") as file:
+            lines = file.readlines()
+            if len(lines) >= 2:
+                previous_status = lines[0].strip()  # Load previous status
+                last_sent_status = lines[1].strip()  # Load last sent status
+            else:
+                previous_status = None
+                last_sent_status = None
+    except FileNotFoundError:
+        previous_status = None
+        last_sent_status = None
+        
+def save_status():
+    """Save the current and last sent statuses to file."""
+    with open(STATUS_FILE, "w") as file:
+        file.write(f"{previous_status}\n")
+        file.write(f"{last_sent_status}\n")
 
 def log_status(status):
     """Функція для запису часу та статусу в лог."""
@@ -138,29 +159,30 @@ def check_operator_status():
         return ""
 
 def check_status_and_restart_operator():
-    """Функція для перевірки статусу оператора та його запуску, якщо він зупинений."""
-    global previous_status, last_sent_status  # Дозволяємо змінювати глобальні змінні
+    """Check the operator status and handle changes."""
+    global previous_status, last_sent_status
+
+    load_status()  # Load the statuses from the file
+
     output = check_operator_status()
 
     for line in output.splitlines():
         if "state" in line:
-            current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
+            current_status = line.strip().replace("state: ", "")  # Clean the status
 
-            # Log the current and previous status for debugging
             log_status(f"Current status: {current_status}, Previous status: {previous_status}, Last sent status: {last_sent_status}")
 
-            # Only send notification if the current status is different from the last sent status
             if current_status != last_sent_status:
-                emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
+                emoji_status = status_emojis.get(current_status, current_status)  # Get emoji status
                 log_status(f"State changed to '{emoji_status}'")
-                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                send_telegram_message(f"State changed to '{emoji_status}'")
                 
-                # Update the statuses
-                previous_status = current_status  # Update previous status to current
-                last_sent_status = current_status  # Update last sent status to current
+                # Update statuses and save them to the file
+                previous_status = current_status
+                last_sent_status = current_status
+                save_status()  # Save the updated statuses
 
             else:
-                # If status has not changed, just log it
                 log_status(f"No change in status: {current_status}")
 
             if "stopped" in current_status:
@@ -168,6 +190,7 @@ def check_status_and_restart_operator():
                 restart_operator()
                 return False
 
+    # Check and handle GUI status
     gui_status_result = subprocess.run(
         ["docker", "exec", "shardeum-dashboard", "operator-cli", "gui", "status"],
         capture_output=True,
