@@ -146,16 +146,16 @@ def check_status_and_restart_operator():
         if "state" in line:
             current_status = line.strip().replace("state: ", "")  # Видаляємо "state: "
 
-            if previous_status != current_status:  # Якщо статус змінився
+            # Send notification only if the state has changed from both previous and last sent statuses
+            if previous_status != current_status and last_sent_status != current_status:  
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
+                send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
+                last_sent_status = current_status  # Оновлюємо останній надісланий статус
 
-                # Відправляємо повідомлення тільки, якщо статус змінився від останнього надісланого
-                if last_sent_status != current_status:
-                    send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
-                    last_sent_status = current_status  # Оновлюємо останній надісланий статус
+            # Always update previous status
+            previous_status = current_status  # Оновлюємо попередній статус
 
-                previous_status = current_status  # Оновлюємо попередній статус
 
             else:
                 # Якщо статус не змінився, тільки логування
