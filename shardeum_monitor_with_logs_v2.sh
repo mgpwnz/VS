@@ -154,8 +154,8 @@ def check_status_and_restart_operator():
                 emoji_status = status_emojis.get(current_status, current_status)  # Отримуємо графічний статус
                 log_status(f"State changed to '{emoji_status}'")
                 send_telegram_message(f"State changed to '{emoji_status}'")  # Відправка повідомлення в Telegram
-
-                # Update both previous and last sent status
+                
+                # Update the statuses
                 previous_status = current_status  # Update previous status to current
                 last_sent_status = current_status  # Update last sent status to current
 
@@ -179,8 +179,6 @@ def check_status_and_restart_operator():
         start_gui()
 
     return True
-
-
 
 def restart_operator():
     """Функція для запуску оператора."""
