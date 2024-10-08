@@ -89,7 +89,6 @@ echo "Shardeum Validator systemd service installed and started."
 
 # If Telegram bot is selected, install the Telegram bot script
 if [[ $install_telegram =~ ^[Yy]$ ]]; then
-
 cat <<EOF > $BOT_SCRIPT
 #!/bin/bash
 
@@ -104,6 +103,8 @@ PREV_GUI_STATUS=""
 # Function to send Telegram notification
 send_telegram_message() {
     local MESSAGE=\$1
+    # Replace newline escape characters with actual newlines
+    MESSAGE=\$(echo -e "\$MESSAGE")
     curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE"
 }
 
