@@ -30,7 +30,7 @@ cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
 # Define the log file path
-LOG_FILE="/root/shardeum_validator.log"  # Set this to the appropriate log file path
+LOG_FILE="/root/shardeum_validator.log"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
@@ -52,8 +52,12 @@ log_status() {
         fi
     fi
 
-    # Retrieve the current state
-    STATUS=$(docker exec -it shardeum-dashboard /bin/bash -c "operator-cli status | grep -i 'state:' | awk '{print \$2}'")
+    # Create a temporary script inside the container to retrieve the status
+    docker exec shardeum-dashboard /bin/bash -c "echo 'operator-cli status | grep -i \"state:\" | awk \'{print \$2}\'' > /tmp/get_status.sh"
+    docker exec shardeum-dashboard chmod +x /tmp/get_status.sh
+
+    # Retrieve the current state by running the script inside the container
+    STATUS=$(docker exec shardeum-dashboard /bin/bash -c "/tmp/get_status.sh")
     
     # Get the current timestamp in the specified timezone
     TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
@@ -73,6 +77,7 @@ while true; do
     log_status
     sleep 900  # 15 minutes
 done
+
 EOF
 
 # Make the script executable
@@ -116,7 +121,7 @@ PREV_STATUS=""
 
 # Function to send Telegram notification
 send_telegram_message() {
-    local MESSAGE=\$1
+    local MESSAGE="\$1"
     # Replace newline escape characters with actual newlines
     MESSAGE=\$(echo -e "\$MESSAGE")
     curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE" >> /root/shardeum_telegram_bot.log 2>&1
@@ -124,7 +129,12 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec -it shardeum-dashboard /bin/bash -c "operator-cli status | grep -i 'state:' | awk '{print \$2}'")
+    # Створюємо тимчасовий скрипт всередині контейнера, щоб отримати статус
+    docker exec shardeum-dashboard /bin/bash -c "echo 'operator-cli status | grep -i \"state:\" | awk \'{print \$2}\'' > /tmp/get_status.sh"
+    docker exec shardeum-dashboard chmod +x /tmp/get_status.sh
+
+    # Отримуємо статус, запустивши скрипт всередині контейнера
+    STATUS=\$(docker exec shardeum-dashboard /bin/bash -c "/tmp/get_status.sh")
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
@@ -133,6 +143,7 @@ check_status() {
         SERVER_IP=""
     fi
 
+    # Призначаємо статус емодзі в залежності від отриманого статусу
     if [ "\$STATUS" == "offline" ]; then
         STATUS_EMOJI="❌ offline"
     elif [ "\$STATUS" == "waiting-for-network" ]; then
@@ -143,7 +154,7 @@ check_status() {
         STATUS_EMOJI="🔵 active"
     fi
 
-    # Check if status changed and send Telegram notification
+    # Перевіряємо, чи змінився статус, і надсилаємо сповіщення у Telegram
     if [ "\$STATUS" != "\$PREV_STATUS" ]; then
         MESSAGE="Host: \$HOSTNAME"
         if [ -n "\$SERVER_IP" ]; then
@@ -156,12 +167,13 @@ check_status() {
     fi
 }
 
-# Run check_status every 5 minutes
+# Виконуємо check_status кожні 5 хвилин
 while true; do
     check_status
-    sleep 300  # 5 minutes
+    sleep 300  # 5 хвилин
 done
 EOF
+
 
 # Make the Telegram bot script executable
 chmod +x $BOT_SCRIPT
