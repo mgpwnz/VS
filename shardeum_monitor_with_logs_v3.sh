@@ -36,7 +36,7 @@ TIMEZONE="Europe/Kyiv"
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Retrieve the current state and GUI status
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print \$2}')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | sed 's/.*state: //i')
     GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
 
     # Get the current timestamp in the specified timezone
@@ -115,7 +115,7 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print \$2}')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | sed 's/.*state: //i')
     GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
 
     HOSTNAME=\$(hostname)
