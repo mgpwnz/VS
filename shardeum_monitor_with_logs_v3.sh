@@ -33,42 +33,38 @@ cat <<EOF > $SCRIPT_FILE
 LOG_FILE="/root/shardeum_validator.log"
 TIMEZONE="Europe/Kyiv"
 
-# Функція для запису статусу з часовою міткою UTC+2 (Kyiv)
+# Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    # Перевіряємо, чи контейнер працює
-    CONTAINER_STATUS=\$(docker inspect -f '{{.State.Running}}' shardeum-dashboard)
+    # Перевіряємо чи контейнер працює
+    CONTAINER_STATUS=$(docker inspect -f '{{.State.Running}}' shardeum-dashboard)
 
-    if [ "\$CONTAINER_STATUS" != "true" ]; then
-        echo "[\$(date)] Контейнер зупинений, спроба запуску..." >> \$LOG_FILE
-        docker start shardeum-dashboard >> \$LOG_FILE 2>&1
+    if [ "$CONTAINER_STATUS" != "true" ]; then
+        echo "[$(date)] Контейнер зупинений, спроба запуску..." >> $LOG_FILE
+        docker start shardeum-dashboard >> $LOG_FILE 2>&1
 
-        # Перевіряємо, чи вдалося запустити контейнер
-        CONTAINER_STATUS=\$(docker inspect -f '{{.State.Running}}' shardeum-dashboard)
-        if [ "\$CONTAINER_STATUS" != "true" ]; then
-            echo "[\$(date)] Помилка запуску контейнера." >> \$LOG_FILE
+        # Перевіряємо чи вдалося запустити контейнер
+        CONTAINER_STATUS=$(docker inspect -f '{{.State.Running}}' shardeum-dashboard)
+        if [ "$CONTAINER_STATUS" != "true" ]; then
+            echo "[$(date)] Помилка запуску контейнера." >> $LOG_FILE
             return
         else
-            echo "[\$(date)] Контейнер успішно запущено." >> \$LOG_FILE
+            echo "[$(date)] Контейнер успішно запущено." >> $LOG_FILE
         fi
     fi
 
-    # Створюємо тимчасовий скрипт всередині контейнера для отримання статусу
-    docker exec shardeum-dashboard /bin/bash -c "echo 'operator-cli status | grep -i \"state:\" | awk \'{print \$2}\'' > /tmp/get_status.sh"
-    docker exec shardeum-dashboard chmod +x /tmp/get_status.sh
+    # Retrieve the current state directly
+    STATUS=$(docker exec shardeum-dashboard operator-cli status | grep -i "state:" | awk '{print $2}')
 
-    # Отримуємо поточний статус
-    STATUS=\$(docker exec shardeum-dashboard /bin/bash -c "/tmp/get_status.sh")
-    
-    # Часова мітка
-    TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+    # Get the current timestamp in the specified timezone
+    TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
-    # Записуємо статус у лог
-    echo "[\$TIMESTAMP] Node Status: \$STATUS" >> \$LOG_FILE
+    # Log the statuses
+    echo "[$TIMESTAMP] Node Status: $STATUS" >> $LOG_FILE
 
-    # Якщо нода офлайн, намагаємося її запустити
-    if [ "\$STATUS" == "offline" ]; then
-        echo "[\$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
-        docker exec shardeum-dashboard operator-cli start >> \$LOG_FILE 2>&1
+    # If the node is offline, start it
+    if [ "$STATUS" == "offline" ]; then
+        echo "[$TIMESTAMP] Node is offline, attempting to start..." >> $LOG_FILE
+        docker exec shardeum-dashboard operator-cli start >> $LOG_FILE 2>&1
     fi
 }
 
