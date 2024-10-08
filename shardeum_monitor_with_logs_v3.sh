@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Check if user is root
-if [ "$EUID" -ne 0 ]
-  then echo "Please run as root"
-  exit
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root"
+    exit
 fi
 
 # Configuration variables
@@ -36,25 +36,25 @@ TIMEZONE="Europe/Kyiv"
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Retrieve the current state and GUI status
-    STATUS=$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print $2}')
-    GUI_STATUS=$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print $2}')
-    
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print \$2}')
+    GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
+
     # Get the current timestamp in the specified timezone
-    TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+    TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
     # Log the statuses
-    echo "[$TIMESTAMP] Node Status: $STATUS, GUI Status: $GUI_STATUS" >> $LOG_FILE
+    echo "[$TIMESTAMP] Node Status: \$STATUS, GUI Status: \$GUI_STATUS" >> \$LOG_FILE
 
     # If the node is offline, start it
-    if [ "$STATUS" == "offline" ]; then
-        echo "[$TIMESTAMP] Node is offline, attempting to start..." >> $LOG_FILE
-        docker exec shardeum-dashboard operator-cli start
+    if [ "\$STATUS" == "offline" ]; then
+        echo "[$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
+        docker exec shardeum-dashboard operator-cli start >> \$LOG_FILE 2>&1
     fi
 
     # If the GUI is not running, start it
-    if [[ "$GUI_STATUS" == "operator gui not running!" ]]; then
-        echo "[$TIMESTAMP] GUI is not running, attempting to start..." >> $LOG_FILE
-        docker exec shardeum-dashboard operator-cli gui start
+    if [[ "\$GUI_STATUS" == "operator gui not running!" ]]; then
+        echo "[$TIMESTAMP] GUI is not running, attempting to start..." >> \$LOG_FILE
+        docker exec shardeum-dashboard operator-cli gui start >> \$LOG_FILE 2>&1
     fi
 }
 
@@ -63,7 +63,6 @@ while true; do
     log_status
     sleep 900  # 15 minutes
 done
-
 EOF
 
 # Make the script executable
@@ -111,7 +110,7 @@ send_telegram_message() {
     local MESSAGE=\$1
     # Replace newline escape characters with actual newlines
     MESSAGE=\$(echo -e "\$MESSAGE")
-    curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE"
+    curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE" >> /root/shardeum_telegram_bot.log 2>&1
 }
 
 # Function to check status and send notification if changed
