@@ -29,26 +29,31 @@ fi
 cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
-LOG_FILE="$LOG_FILE"
+# Define the log file path
+LOG_FILE="/root/shardeum_validator.log"  # Set this to the appropriate log file path
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print \$2}')
-    GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
-    TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+    # Retrieve the current state and GUI status
+    STATUS=$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | awk '{print $2}')
+    GUI_STATUS=$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print $2}')
+    
+    # Get the current timestamp in the specified timezone
+    TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
-    echo "[\$TIMESTAMP] Node Status: \$STATUS, GUI Status: \$GUI_STATUS" >> \$LOG_FILE
+    # Log the statuses
+    echo "[$TIMESTAMP] Node Status: $STATUS, GUI Status: $GUI_STATUS" >> $LOG_FILE
 
     # If the node is offline, start it
-    if [ "\$STATUS" == "offline" ]; then
-        echo "[\$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
+    if [ "$STATUS" == "offline" ]; then
+        echo "[$TIMESTAMP] Node is offline, attempting to start..." >> $LOG_FILE
         docker exec shardeum-dashboard operator-cli start
     fi
 
     # If the GUI is not running, start it
-    if [[ "\$GUI_STATUS" == "operator gui not running!" ]]; then
-        echo "[\$TIMESTAMP] GUI is not running, attempting to start..." >> \$LOG_FILE
+    if [[ "$GUI_STATUS" == "operator gui not running!" ]]; then
+        echo "[$TIMESTAMP] GUI is not running, attempting to start..." >> $LOG_FILE
         docker exec shardeum-dashboard operator-cli gui start
     fi
 }
@@ -58,6 +63,7 @@ while true; do
     log_status
     sleep 900  # 15 minutes
 done
+
 EOF
 
 # Make the script executable
