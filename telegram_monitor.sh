@@ -146,7 +146,32 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
+    local RETRY_COUNT=0
+    local MAX_RETRIES=5
+    local STATUS_OUTPUT=""
+    
+    # Try to get the status with retries
+    while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
+        STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null)
+        
+        # Check if the output contains 'state:'
+        if echo "\$STATUS_OUTPUT" | grep -q 'state:'; then
+            break
+        fi
+
+        echo "Attempt \$((\$RETRY_COUNT + 1)): Unable to retrieve status, retrying..."
+        ((RETRY_COUNT++))
+        sleep 2  # Wait before retrying
+    done
+
+    # If unable to retrieve status after all retries, log an error and exit
+    if [ \$RETRY_COUNT -eq \$MAX_RETRIES ]; then
+        echo "Error: Unable to retrieve node status after \$MAX_RETRIES attempts"
+        STATUS="unknown"
+    else
+        # Extract the node status
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oE 'active|standby|stopped|offline|waiting-for-network' | tail -n 1)
+    fi
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
@@ -155,6 +180,7 @@ check_status() {
         SERVER_IP=""
     fi
 
+    # Define emoji based on node status
     if [ "\$STATUS" == "stopped" ]; then
         STATUS_EMOJI="❌ stopped"
     elif [ "\$STATUS" == "waiting-for-network" ]; then
@@ -167,7 +193,7 @@ check_status() {
         STATUS_EMOJI="unknown"
     fi
 
-    # Check if status changed and send Telegram notification
+    # Send Telegram notification if status has changed
     if [ "\$STATUS" != "\$PREV_STATUS" ]; then
         MESSAGE="Host: \$HOSTNAME"
         if [ -n "\$SERVER_IP" ]; then
