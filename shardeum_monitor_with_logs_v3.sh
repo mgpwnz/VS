@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Check if user is root
-if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root"
-    exit
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
 fi
 
 # Configuration variables
@@ -29,25 +29,20 @@ fi
 cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
-# Define the log file path
-LOG_FILE="/root/shardeum_validator.log"  # Set this to the appropriate log file path
+LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    # Retrieve the current state
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
-    
-    # Get the current timestamp in the specified timezone
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
     TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
-    # Log the statuses
-    echo "[$TIMESTAMP] Node Status: \$STATUS" >> \$LOG_FILE
+    echo "[\$TIMESTAMP] Node Status: \$STATUS" >> \$LOG_FILE
 
     # If the node is offline, start it
     if [ "\$STATUS" == "offline" ]; then
-        echo "[$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
-        docker exec shardeum-dashboard operator-cli start >> \$LOG_FILE 2>&1
+        echo "[\$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
+        docker exec shardeum-dashboard operator-cli start
     fi
 }
 
@@ -87,6 +82,7 @@ echo "Shardeum Validator systemd service installed and started."
 
 # If Telegram bot is selected, install the Telegram bot script
 if [[ $install_telegram =~ ^[Yy]$ ]]; then
+
 cat <<EOF > $BOT_SCRIPT
 #!/bin/bash
 
@@ -102,12 +98,12 @@ send_telegram_message() {
     local MESSAGE=\$1
     # Replace newline escape characters with actual newlines
     MESSAGE=\$(echo -e "\$MESSAGE")
-    curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE" >> /root/shardeum_telegram_bot.log 2>&1
+    curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE"
 }
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
