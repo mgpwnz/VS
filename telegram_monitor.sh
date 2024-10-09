@@ -37,28 +37,26 @@ LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
+# Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
         # Capture the full status output
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
 
-        # Get only the state line and extract the status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]' | head -n 1)
+        # Get the status by filtering the state and removing extra text
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | head -n 1 | awk '{print \$2}' | tr -d '[:space:]')
 
-        # Filter out additional lines if necessary
-        STATUS=\$(echo "\$STATUS" | awk '{print \$1}')  # Залишаємо лише перше слово
+        # If STATUS is empty or contains additional words, set it to "unknown"
+        if [[ -z "\$STATUS" || \$STATUS == *"State"* ]]; then
+            STATUS="unknown"
+        fi
 
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
         # Log the status or error message
-        if [ -z "\$STATUS" ]; then
-            STATUS="unknown"
-            echo "[\${TIMESTAMP}] Error: Unable to retrieve node status" >> \$LOG_FILE
-        else
-            echo "[\${TIMESTAMP}] Node Status: \$STATUS" >> \$LOG_FILE
-        fi
+        echo "[\${TIMESTAMP}] Node Status: \$STATUS" >> \$LOG_FILE
 
         # If the node is offline or stopped, try to start it
         if [[ "\$STATUS" == "offline" || "\$STATUS" == "stopped" ]]; then
@@ -70,6 +68,7 @@ log_status() {
         echo "[\${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> \$LOG_FILE
     fi
 }
+
 
 # Run log_status every 15 minutes
 while true; do
