@@ -37,32 +37,25 @@ LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
-# Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
         # Capture the full status output
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
 
-        # Log the full output for debugging
-        echo "Full status output: \$STATUS_OUTPUT" >> \$LOG_FILE
-
         # Get only the state line and extract the status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -m 1 -oP "(?<=state: ).*")
-
-        # Log the extracted status for debugging
-        echo "Extracted status: \$STATUS" >> \$LOG_FILE
-
-        # If STATUS is empty or not recognized, set it to "unknown"
-        if [ -z "\$STATUS" ] || ! echo "\$STATUS" | grep -qE "^(offline|stopped|waiting-for-network|standby|active)$"; then
-            STATUS="unknown"
-        fi
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]' | head -n 1)
 
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
         # Log the status or error message
-        echo "[\${TIMESTAMP}] Node Status: \$STATUS" >> \$LOG_FILE
+        if [ -z "\$STATUS" ]; then
+            STATUS="unknown"
+            echo "[\${TIMESTAMP}] Error: Unable to retrieve node status" >> \$LOG_FILE
+        else
+            echo "[\${TIMESTAMP}] Node Status: \$STATUS" >> \$LOG_FILE
+        fi
 
         # If the node is offline or stopped, try to start it
         if [[ "\$STATUS" == "offline" || "\$STATUS" == "stopped" ]]; then
@@ -74,6 +67,7 @@ log_status() {
         echo "[\${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> \$LOG_FILE
     fi
 }
+
 
 # Run log_status every 15 minutes
 while true; do
@@ -131,7 +125,7 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}' | tr -d '[:space:]')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
@@ -140,24 +134,17 @@ check_status() {
         SERVER_IP=""
     fi
 
-    # Use a case statement for better readability
-    case "\$STATUS" in
-        "stopped")
-            STATUS_EMOJI="❌ stopped"
-            ;;
-        "waiting-for-network")
-            STATUS_EMOJI="⏳ waiting-for-network"
-            ;;
-        "standby")
-            STATUS_EMOJI="🟢 standby"
-            ;;
-        "active")
-            STATUS_EMOJI="🔵 active"
-            ;;
-        *)
-            STATUS_EMOJI="unknown"
-            ;;
-    esac
+    if [ "\$STATUS" == "stopped" ]; then
+        STATUS_EMOJI="❌ stopped"
+    elif [ "\$STATUS" == "waiting-for-network" ]; then
+        STATUS_EMOJI="⏳ waiting-for-network"
+    elif [ "\$STATUS" == "standby" ]; then
+        STATUS_EMOJI="🟢 standby"
+    elif [ "\$STATUS" == "active" ]; then
+        STATUS_EMOJI="🔵 active"
+    else
+        STATUS_EMOJI="unknown"
+    fi
 
     # Check if status changed and send Telegram notification
     if [ "\$STATUS" != "\$PREV_STATUS" ]; then
