@@ -37,17 +37,24 @@ LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
+# Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
         # Capture the full status output
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
 
-        # Get only the status line and extract the state
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]' | grep -E "^(offline|stopped|waiting-for-network|standby|active)$")
+        # Log the full output for debugging
+        echo "Full status output: \$STATUS_OUTPUT" >> \$LOG_FILE
 
-        # If STATUS is empty, set it to "unknown"
-        if [ -z "\$STATUS" ]; then
+        # Get only the state line and extract the status
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -m 1 -oP "(?<=state: ).*")
+
+        # Log the extracted status for debugging
+        echo "Extracted status: \$STATUS" >> \$LOG_FILE
+
+        # If STATUS is empty or not recognized, set it to "unknown"
+        if [ -z "\$STATUS" ] || ! echo "\$STATUS" | grep -qE "^(offline|stopped|waiting-for-network|standby|active)$"; then
             STATUS="unknown"
         fi
 
