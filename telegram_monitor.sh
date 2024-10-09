@@ -68,7 +68,6 @@ log_status() {
     fi
 }
 
-
 # Run log_status every 15 minutes
 while true; do
     log_status
@@ -125,7 +124,7 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}' | tr -d '[:space:]')
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
