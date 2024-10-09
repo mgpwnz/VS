@@ -35,26 +35,19 @@ TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    # Retrieve the current state and GUI status
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | sed 's/.*state: //i')
-    GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
-
+    # Retrieve the current state
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
+    
     # Get the current timestamp in the specified timezone
     TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
     # Log the statuses
-    echo "[$TIMESTAMP] Node Status: \$STATUS, GUI Status: \$GUI_STATUS" >> \$LOG_FILE
+    echo "[$TIMESTAMP] Node Status: \$STATUS" >> \$LOG_FILE
 
     # If the node is offline, start it
     if [ "\$STATUS" == "offline" ]; then
         echo "[$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
         docker exec shardeum-dashboard operator-cli start >> \$LOG_FILE 2>&1
-    fi
-
-    # If the GUI is not running, start it
-    if [[ "\$GUI_STATUS" == "operator gui not running!" ]]; then
-        echo "[$TIMESTAMP] GUI is not running, attempting to start..." >> \$LOG_FILE
-        docker exec shardeum-dashboard operator-cli gui start >> \$LOG_FILE 2>&1
     fi
 }
 
@@ -103,7 +96,6 @@ TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 INCLUDE_IP="$INCLUDE_IP"
 
 PREV_STATUS=""
-PREV_GUI_STATUS=""
 
 # Function to send Telegram notification
 send_telegram_message() {
@@ -115,8 +107,7 @@ send_telegram_message() {
 
 # Function to check status and send notification if changed
 check_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status | grep -i 'state:' | sed 's/.*state: //i')
-    GUI_STATUS=\$(docker exec shardeum-dashboard operator-cli gui status | grep -i 'status:' | awk '{print \$2}')
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
@@ -136,7 +127,7 @@ check_status() {
     fi
 
     # Check if status changed and send Telegram notification
-    if [ "\$STATUS" != "\$PREV_STATUS" ] || [ "\$GUI_STATUS" != "\$PREV_GUI_STATUS" ]; then
+    if [ "\$STATUS" != "\$PREV_STATUS" ]; then
         MESSAGE="Host: \$HOSTNAME"
         if [ -n "\$SERVER_IP" ]; then
             MESSAGE="\$MESSAGE\nIP: \$SERVER_IP"
@@ -145,7 +136,6 @@ check_status() {
         send_telegram_message "\$MESSAGE"
         
         PREV_STATUS="\$STATUS"
-        PREV_GUI_STATUS="\$GUI_STATUS"
     fi
 }
 
