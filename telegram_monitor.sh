@@ -46,6 +46,9 @@ log_status() {
         # Get only the state line and extract the status
         STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]' | head -n 1)
 
+        # Filter out additional lines if necessary
+        STATUS=\$(echo "\$STATUS" | awk '{print \$1}')  # Залишаємо лише перше слово
+
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
