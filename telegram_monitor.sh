@@ -133,17 +133,24 @@ check_status() {
         SERVER_IP=""
     fi
 
-    if [ "\$STATUS" == "stopped" ]; then
-        STATUS_EMOJI="❌ stopped"
-    elif [ "\$STATUS" == "waiting-for-network" ]; then
-        STATUS_EMOJI="⏳ waiting-for-network"
-    elif [ "\$STATUS" == "standby" ]; then
-        STATUS_EMOJI="🟢 standby"
-    elif [ "\$STATUS" == "active" ]; then
-        STATUS_EMOJI="🔵 active"
-    else
-        STATUS_EMOJI="unknown"
-    fi
+    # Use a case statement for better readability
+    case "\$STATUS" in
+        "stopped")
+            STATUS_EMOJI="❌ stopped"
+            ;;
+        "waiting-for-network")
+            STATUS_EMOJI="⏳ waiting-for-network"
+            ;;
+        "standby")
+            STATUS_EMOJI="🟢 standby"
+            ;;
+        "active")
+            STATUS_EMOJI="🔵 active"
+            ;;
+        *)
+            STATUS_EMOJI="unknown"
+            ;;
+    esac
 
     # Check if status changed and send Telegram notification
     if [ "\$STATUS" != "\$PREV_STATUS" ]; then
