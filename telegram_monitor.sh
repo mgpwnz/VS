@@ -44,7 +44,7 @@ log_status() {
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
 
         # Get only the state line and extract the status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]' | head -n 1)
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oE 'active|standby|stopped|offline|waiting-for-network' | tail -n 1)
 
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
@@ -67,7 +67,6 @@ log_status() {
         echo "[\${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> \$LOG_FILE
     fi
 }
-
 
 # Run log_status every 15 minutes
 while true; do
