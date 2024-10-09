@@ -37,15 +37,13 @@ LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
-# Function to log status with timestamp in UTC+2 (Kyiv)
-# Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
-        # Capture the status
+        # Capture the status output
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
-        
-        # Log only the relevant status line
+
+        # Get only the state line and extract the status
         STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | awk '{print \$2}' | tr -d '[:space:]')
 
         # Get the current timestamp in UTC+2 (Kyiv)
