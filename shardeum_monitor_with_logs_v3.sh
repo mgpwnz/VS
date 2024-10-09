@@ -37,7 +37,9 @@ log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "$(docker ps -q -f name=shardeum-dashboard)" ]; then
         # Capture the status
-        STATUS=$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
+        STATUS_OUTPUT=$(docker exec shardeum-dashboard operator-cli status 2>&1)
+        echo "DEBUG: Status command output: $STATUS_OUTPUT" >> $LOG_FILE
+        STATUS=$(echo "$STATUS_OUTPUT" | grep -i "state:" | head -n 1 | awk '{print $2}')
         
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
