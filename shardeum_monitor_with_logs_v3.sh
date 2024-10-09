@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Перевірка, чи користувач root
+# Check if user is root
 if [ "$EUID" -ne 0 ]; then
-    echo "Будь ласка, запустіть скрипт з правами root."
+    echo "Please run as root"
     exit
 fi
 
-# Змінні конфігурації
+# Configuration variables
 LOG_FILE="/root/shardeum_validator.log"
 SERVICE_FILE="/etc/systemd/system/shardeum-validator.service"
 SCRIPT_FILE="/usr/local/bin/shardeum_validator.sh"
 BOT_SCRIPT="/usr/local/bin/shardeum_telegram_bot.sh"
 
-# Запит конфігурації Telegram бота
-read -p "Встановити Telegram Bot для сповіщень про статус? (Y/N): " install_telegram
+# Prompt for Telegram Bot configuration
+read -p "Would you like to install Telegram Bot for status notifications? (Y/N): " install_telegram
 if [[ $install_telegram =~ ^[Yy]$ ]]; then
-    read -p "Введіть ваш TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-    read -p "Введіть ваш TELEGRAM_CHAT_ID: " TELEGRAM_CHAT_ID
-    read -p "Додати IP сервера до сповіщень у Telegram? (Y/N): " include_ip
+    read -p "Enter your TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
+    read -p "Enter your TELEGRAM_CHAT_ID: " TELEGRAM_CHAT_ID
+    read -p "Include server IP in Telegram notifications? (Y/N): " include_ip
     if [[ $include_ip =~ ^[Yy]$ ]]; then
         INCLUDE_IP="true"
     else
@@ -25,12 +25,12 @@ if [[ $install_telegram =~ ^[Yy]$ ]]; then
     fi
 fi
 
-# Створюємо скрипт для управління Shardeum валідатором
+# Create the Shardeum Validator Script
 cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
-# Шлях до лог файлу
-LOG_FILE="/root/shardeum_validator.log"
+# Define the log file path
+LOG_FILE="/root/shardeum_validator.log"  # Set this to the appropriate log file path
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
@@ -52,9 +52,9 @@ log_status() {
         fi
     fi
 
-    # Retrieve the current state directly
-    STATUS=$(docker exec shardeum-dashboard operator-cli status | grep -i "state:" | awk '{print $2}')
-
+    # Retrieve the current state
+    STATUS=$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
+    
     # Get the current timestamp in the specified timezone
     TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
@@ -68,17 +68,17 @@ log_status() {
     fi
 }
 
-# Запускаємо log_status кожні 15 хвилин
+# Run log_status every 15 minutes
 while true; do
     log_status
-    sleep 900  # 15 хвилин
+    sleep 900  # 15 minutes
 done
 EOF
 
-# Робимо скрипт виконуваним
+# Make the script executable
 chmod +x $SCRIPT_FILE
 
-# Створюємо systemd сервіс для валідатора
+# Create Systemd Service
 cat <<EOF > $SERVICE_FILE
 [Unit]
 Description=Shardeum Validator Manager
@@ -95,38 +95,36 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-# Перезавантажуємо systemd і активуємо сервіс
+# Reload systemd and enable service
 systemctl daemon-reload
 systemctl enable shardeum-validator.service
 systemctl start shardeum-validator.service
 
-echo "Shardeum Validator systemd service встановлено та запущено."
+echo "Shardeum Validator systemd service installed and started."
 
-# Якщо обрано встановлення Telegram бота, створюємо скрипт бота
+# If Telegram bot is selected, install the Telegram bot script
 if [[ $install_telegram =~ ^[Yy]$ ]]; then
 cat <<EOF > $BOT_SCRIPT
 #!/bin/bash
 
-# Змінні Telegram бота
+# Telegram Bot variables
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 INCLUDE_IP="$INCLUDE_IP"
 
 PREV_STATUS=""
 
-# Функція для відправки повідомлення у Telegram
+# Function to send Telegram notification
 send_telegram_message() {
-    local MESSAGE="\$1"
+    local MESSAGE=\$1
+    # Replace newline escape characters with actual newlines
     MESSAGE=\$(echo -e "\$MESSAGE")
     curl -s -X POST https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=\$TELEGRAM_CHAT_ID -d text="\$MESSAGE" >> /root/shardeum_telegram_bot.log 2>&1
 }
 
-# Функція для перевірки статусу і відправки повідомлення
+# Function to check status and send notification if changed
 check_status() {
-    docker exec shardeum-dashboard /bin/bash -c "echo 'operator-cli status | grep -i \"state:\" | awk \'{print \$2}\'' > /tmp/get_status.sh"
-    docker exec shardeum-dashboard chmod +x /tmp/get_status.sh
-
-    STATUS=\$(docker exec shardeum-dashboard /bin/bash -c "/tmp/get_status.sh")
+    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
@@ -145,6 +143,7 @@ check_status() {
         STATUS_EMOJI="🔵 active"
     fi
 
+    # Check if status changed and send Telegram notification
     if [ "\$STATUS" != "\$PREV_STATUS" ]; then
         MESSAGE="Host: \$HOSTNAME"
         if [ -n "\$SERVER_IP" ]; then
@@ -157,17 +156,17 @@ check_status() {
     fi
 }
 
-# Запускаємо check_status кожні 5 хвилин
+# Run check_status every 5 minutes
 while true; do
     check_status
-    sleep 300  # 5 хвилин
+    sleep 300  # 5 minutes
 done
 EOF
 
-# Робимо скрипт бота виконуваним
+# Make the Telegram bot script executable
 chmod +x $BOT_SCRIPT
 
-# Створюємо systemd сервіс для Telegram бота
+# Create Telegram Bot Systemd Service
 cat <<EOF > /etc/systemd/system/shardeum-telegram-bot.service
 [Unit]
 Description=Shardeum Telegram Bot
@@ -184,12 +183,12 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-# Перезавантажуємо systemd і активуємо сервіс Telegram бота
+# Reload systemd and enable Telegram bot service
 systemctl daemon-reload
 systemctl enable shardeum-telegram-bot.service
 systemctl start shardeum-telegram-bot.service
 
-echo "Shardeum Telegram bot встановлено та запущено."
+echo "Shardeum Telegram bot installed and started."
 fi
 
-echo "Інсталяція завершена."
+echo "Installation complete."
