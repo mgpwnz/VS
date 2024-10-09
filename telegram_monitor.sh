@@ -40,8 +40,30 @@ TIMEZONE="Europe/Kyiv"
 log_status() {
     # Check if the shardeum-dashboard container is running
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
-        # Capture the full status output
-        STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
+        # Capture the full status output with retries
+        local RETRY_COUNT=0
+        local MAX_RETRIES=5
+        local STATUS_OUTPUT=""
+        
+        while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
+            STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
+
+            # Check if the output contains 'state:'
+            if echo "\$STATUS_OUTPUT" | grep -q 'state:'; then
+                break
+            fi
+
+            echo "Attempt \$((\$RETRY_COUNT + 1)): Unable to retrieve status, retrying..."
+            ((RETRY_COUNT++))
+            sleep 2  # Wait before retrying
+        done
+
+        # If we still can't get the status, log an error and exit
+        if [ \$RETRY_COUNT -eq \$MAX_RETRIES ]; then
+            TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+            echo "[\${TIMESTAMP}] Error: Unable to retrieve node status after \$MAX_RETRIES attempts" >> \$LOG_FILE
+            return
+        fi
 
         # Get only the state line and extract the status
         STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oE 'active|standby|stopped|offline|waiting-for-network' | tail -n 1)
@@ -52,7 +74,7 @@ log_status() {
         # Log the status or error message
         if [ -z "\$STATUS" ]; then
             STATUS="unknown"
-            echo "[\${TIMESTAMP}] Error: Unable to retrieve node status" >> \$LOG_FILE
+            echo "[\${TIMESTAMP}] Error: Unable to determine node status from output: \$STATUS_OUTPUT" >> \$LOG_FILE
         else
             echo "[\${TIMESTAMP}] Node Status: \$STATUS" >> \$LOG_FILE
         fi
