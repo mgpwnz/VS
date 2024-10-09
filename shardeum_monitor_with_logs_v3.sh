@@ -33,7 +33,7 @@ fi
 cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
-LOG_FILE="/root/shardeum_validator.log"
+LOG_FILE="$LOG_FILE"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
@@ -42,13 +42,12 @@ log_status() {
     if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
         # Capture the status
         STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
-        echo "DEBUG: Status command output: \$STATUS_OUTPUT" >> \$LOG_FILE
         STATUS=\$(echo "\$STATUS_OUTPUT" | grep -i "state:" | head -n 1 | awk '{print \$2}')
         
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
-        # Check if STATUS is empty
+        # Log the clean status message
         if [ -z "\$STATUS" ]; then
             STATUS="unknown"
             echo "[\${TIMESTAMP}] Error: Unable to retrieve node status" >> \$LOG_FILE
@@ -140,6 +139,8 @@ check_status() {
         STATUS_EMOJI="🟢 standby"
     elif [ "\$STATUS" == "active" ]; then
         STATUS_EMOJI="🔵 active"
+    else
+        STATUS_EMOJI="unknown"
     fi
 
     # Check if status changed and send Telegram notification
