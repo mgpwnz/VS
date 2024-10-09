@@ -29,20 +29,35 @@ fi
 cat <<EOF > $SCRIPT_FILE
 #!/bin/bash
 
-LOG_FILE="$LOG_FILE"
+LOG_FILE="/root/shardeum_validator.log"
 TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    STATUS=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print \$2}')
-    TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+    # Check if the shardeum-dashboard container is running
+    if [ "$(docker ps -q -f name=shardeum-dashboard)" ]; then
+        # Capture the status
+        STATUS=$(docker exec shardeum-dashboard operator-cli status 2>/dev/null | grep -i "state:" | head -n 1 | awk '{print $2}')
+        
+        # Get the current timestamp in UTC+2 (Kyiv)
+        TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
 
-    echo "[\$TIMESTAMP] Node Status: \$STATUS" >> \$LOG_FILE
+        # Check if STATUS is empty
+        if [ -z "$STATUS" ]; then
+            STATUS="unknown"
+            echo "[${TIMESTAMP}] Error: Unable to retrieve node status" >> $LOG_FILE
+        else
+            echo "[${TIMESTAMP}] Node Status: ${STATUS}" >> $LOG_FILE
+        fi
 
-    # If the node is offline, start it
-    if [ "\$STATUS" == "offline" ]; then
-        echo "[\$TIMESTAMP] Node is offline, attempting to start..." >> \$LOG_FILE
-        docker exec shardeum-dashboard operator-cli start
+        # If the node is offline, try to start it
+        if [ "$STATUS" == "offline" ]; then
+            echo "[${TIMESTAMP}] Node is offline, attempting to start..." >> $LOG_FILE
+            docker exec shardeum-dashboard operator-cli start
+        fi
+    else
+        TIMESTAMP=$(TZ=$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
+        echo "[${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> $LOG_FILE
     fi
 }
 
