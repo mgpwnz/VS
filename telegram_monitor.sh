@@ -87,6 +87,12 @@ log_status() {
     else
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
         echo "[\${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> \$LOG_FILE
+        docker start shardeum-dashboard
+            if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
+                echo "[\${TIMESTAMP}] Event: shardeum-dashboard container started successfully" >> \$LOG_FILE
+            else
+                echo "[\${TIMESTAMP}] Error: Failed to start shardeum-dashboard container" >> \$LOG_FILE
+            fi
     fi
 }
 
