@@ -139,7 +139,7 @@ cat <<EOF > $BOT_SCRIPT
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 INCLUDE_IP="$INCLUDE_IP"
-IP=$(ip route get 1.1.1.1 | grep -oP 'src \K\S+')
+IP=\$(ip route get 1.1.1.1 | grep -oP 'src \K\S+')
 
 PREV_STATUS=""
 
