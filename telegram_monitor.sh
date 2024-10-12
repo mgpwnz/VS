@@ -181,7 +181,7 @@ check_status() {
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
-        SERVER_IP=\$(`wget -qO- eth0.me`)
+        SERVER_IP=\$(hostname -I | awk '{print $1}')
     else
         SERVER_IP=""
     fi
