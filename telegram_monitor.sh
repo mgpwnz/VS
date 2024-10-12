@@ -139,6 +139,7 @@ cat <<EOF > $BOT_SCRIPT
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 INCLUDE_IP="$INCLUDE_IP"
+IP=$(ip route get 1.1.1.1 | grep -oP 'src \K\S+')
 
 PREV_STATUS=""
 
@@ -181,7 +182,7 @@ check_status() {
 
     HOSTNAME=\$(hostname)
     if [ "\$INCLUDE_IP" == "true" ]; then
-        SERVER_IP=\$(hostname -I | awk '{print $1}')
+        SERVER_IP="\$IP"
     else
         SERVER_IP=""
     fi
