@@ -51,18 +51,31 @@ confirm_input() {
   fi
   return 0 
 }
+add_0x_prefix() {
+  local key=$1
+  if [[ ! $key =~ ^0x ]]; then
+    key="0x$key"
+  fi
+  echo "$key"
+}
 
 install() {
-  while true; do
+ while true; do
     PRIVATE_KEY=""
-
+    
     check_empty PRIVATE_KEY "Enter private key: "
+
+    # Add "0x" prefix if missing
+    PRIVATE_KEY=$(add_0x_prefix "$PRIVATE_KEY")
     
     confirm_input
     if [ $? -eq 0 ]; then
       break 
     fi
   done
+
+  echo "Private key with 0x prefix (if needed): $PRIVATE_KEY"
+  echo "All data is confirmed. Proceeding..."
 
   echo "All data is confirmed. Proceeding..."
   # Install dependencies
