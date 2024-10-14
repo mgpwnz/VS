@@ -211,6 +211,7 @@ EOF
 
   docker compose up -d
   docker rm -fv infernet-anvil &>/dev/null
+  cd $HOME
 }
 
 uninstall() {
