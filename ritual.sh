@@ -179,8 +179,8 @@ services:
 
   redis:
     image: redis:7.4.0
-    ports:
-    - "6379:6379"
+    expose:
+      - "6379"
     networks:
       - network
     volumes:
