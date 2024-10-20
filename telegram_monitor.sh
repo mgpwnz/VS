@@ -66,7 +66,7 @@ log_status() {
         fi
 
         # Get only the state line and extract the status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -E '^state.*(active|standby|stopped|offline|waiting-for-network)' | tail -n 1)
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|offline|waiting-for-network)' | tail -n 1)
 
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
@@ -177,7 +177,7 @@ check_status() {
         STATUS="unknown"
     else
         # Extract the node status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -E '^state.*(active|standby|stopped|offline|waiting-for-network)' | tail -n 1)
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|offline|waiting-for-network)' | tail -n 1)
     fi
 
     HOSTNAME=\$(hostname)
