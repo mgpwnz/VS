@@ -1,7 +1,24 @@
 #!/bin/bash
 
-# Запитуємо у користувача адресу ноди
-read -p "Введіть NODE-ADDRESS: " node_address
+# Шлях до файлу конфігурації
+config_file="/root/gaianet/config.json"
+
+# Перевірка наявності файлу конфігурації
+if [[ ! -f "$config_file" ]]; then
+    echo "Файл конфігурації не знайдено: $config_file"
+    exit 1
+fi
+
+# Витягування NODE-ADDRESS з файлу конфігурації
+node_address=$(grep -oP '"address": "\K[^"]+' "$config_file")
+
+# Перевірка, чи було успішно витягнуто NODE-ADDRESS
+if [[ -z "$node_address" ]]; then
+    echo "Не вдалося знайти NODE-ADDRESS у файлі конфігурації."
+    exit 1
+fi
+
+echo "Витягнуто NODE-ADDRESS: $node_address"
 
 # Оновлення та встановлення необхідних пакетів
 echo "Оновлення пакетів..."
@@ -82,6 +99,6 @@ EOF
 
 # Запуск Python скрипта в новій сесії tmux
 echo "Запуск скрипта в новій сесії tmux..."
-tmux new-session -d -s gaia "python3 ~/random_chat_with_faker.py"
+tmux new-session -d -s gaia_chat "python3 ~/random_chat_with_faker.py"
 
-echo "Скрипт запущено в фоні у сесії tmux 'gaia'. Використовуйте 'tmux attach -t gaia' для підключення."
+echo "Скрипт запущено в фоні у сесії tmux 'gaia_chat'. Використовуйте 'tmux attach -t gaia_chat' для підключення."
