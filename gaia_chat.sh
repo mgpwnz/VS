@@ -1,6 +1,27 @@
 #!/bin/bash
+# Default variables
+function="install"
+# Options
+option_value(){ echo "$1" | sed -e 's%^--[^=]*=%%g; s%^-[^=]*=%%g'; }
+while test $# -gt 0; do
+        case "$1" in
+        -in|--install)
+            function="install"
+            shift
+            ;;
+        -un|--uninstall)
+            function="uninstall"
+            shift
+            ;;
+        *|--)
+    break
+    ;;
+    esac
+done
 
-# Шлях до файлу конфігурації
+
+install() {
+ # Шлях до файлу конфігурації
 config_file="/root/gaianet/config.json"
 
 # Перевірка наявності файлу конфігурації
@@ -22,7 +43,7 @@ echo "Витягнуто NODE-ADDRESS: $node_address"
 
 # Оновлення та встановлення необхідних пакетів
 echo "Оновлення пакетів..."
-sudo apt update && sudo apt install -y python3-pip tmux
+sudo apt update && sudo apt install -y python3-pip
 
 # Встановлення бібліотек для Python
 echo "Встановлення бібліотек для Python..."
@@ -30,7 +51,7 @@ pip3 install requests faker tenacity
 
 # Створення Python скрипта з підставленою NODE-ADDRESS
 echo "Створення скрипта random_chat_with_faker.py..."
-cat << EOF > ~/random_chat_with_faker.py
+cat << EOF > /usr/local/bin/random_chat_with_faker.py
 import requests
 import random
 import logging
@@ -48,7 +69,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-logging.basicConfig(filename='chat_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.basicConfig(filename='/var/log/chat_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
 
 def log_message(node, message):
     logging.info(f"{node}: {message}")
@@ -97,8 +118,59 @@ while True:
     time.sleep(delay)
 EOF
 
-# Запуск Python скрипта в новій сесії tmux
-echo "Запуск скрипта в новій сесії tmux..."
-tmux new-session -d -s gaia_chat "python3 ~/random_chat_with_faker.py"
+# Надаємо права на виконання скрипту
+chmod +x /usr/local/bin/random_chat_with_faker.py
 
-echo "Скрипт запущено в фоні у сесії tmux 'gaia_chat'. Використовуйте 'tmux attach -t gaia_chat' для підключення."
+# Створення systemd юніт-файлу
+echo "Створення systemd юніт-файлу для служби gaia_chat.service..."
+cat << EOF > /etc/systemd/system/gaia_chat.service
+[Unit]
+Description=Gaia Chat Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/random_chat_with_faker.py
+Restart=always
+User=root
+StandardOutput=append:/var/log/gaia_chat.log
+StandardError=append:/var/log/gaia_chat_error.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Перезавантаження systemd, запуск та включення служби
+echo "Запуск та активація служби gaia_chat.service..."
+sudo systemctl daemon-reload
+sudo systemctl start gaia_chat.service
+sudo systemctl enable gaia_chat.service
+
+echo "Служба gaia_chat.service успішно запущена. Використовуйте 'journalctl -u gaia_chat.service -f' для перегляду журналу в реальному часі."
+}
+
+uninstall() {
+  if [ ! -f "/usr/local/bin/random_chat_with_faker.py" ]; then
+    echo "File not found"
+    return
+  fi
+
+  read -r -p "Wipe all DATA? [y/N] " response
+  case "$response" in
+    [yY][eE][sS]|[yY]) 
+        sudo systemctl stop gaia_chat.service
+        sudo systemctl disable gaia_chat.service
+        sudo systemctl daemon-reload
+        rm /usr/local/bin/random_chat_with_faker.py
+        echo "Видалено"
+        ;;
+    *)
+        echo "Canceled"
+        return
+        ;;
+  esac
+}
+
+# Execute the selected function
+sudo apt install wget -y &>/dev/null
+cd
+$function
