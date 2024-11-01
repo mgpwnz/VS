@@ -47,7 +47,7 @@ sudo apt update && sudo apt install -y python3-pip
 
 # Встановлення бібліотек для Python
 echo "Встановлення бібліотек для Python..."
-pip3 install requests faker tenacity
+pip3 install requests faker tenacity --break-system-packages
 
 # Створення Python скрипта з підставленою NODE-ADDRESS
 echo "Створення скрипта random_chat_with_faker.py..."
