@@ -197,7 +197,7 @@ check_status() {
     elif [ "\$STATUS" == "active" ]; then
         STATUS_EMOJI="🔵 active"
     elif [ "\$STATUS" == "ready" ]; then
-        STATUS_EMOJI="🟠 ready"
+        STATUS_EMOJI="🟠 pre-active"
     elif [ "\$STATUS" == "syncing" ]; then
         STATUS_EMOJI="♻️ syncing"
     elif [ "\$STATUS" == "need-stake" ]; then
