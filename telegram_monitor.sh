@@ -66,7 +66,7 @@ log_status() {
         fi
 
         # Get only the state line and extract the status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|ready|syncing|offline|need-stake|waiting-for-network)' | tail -n 1)
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|ready|syncing|selected|offline|need-stake|waiting-for-network)' | tail -n 1)
 
         # Get the current timestamp in UTC+2 (Kyiv)
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
@@ -177,7 +177,7 @@ check_status() {
         STATUS="unknown"
     else
         # Extract the node status
-        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|ready|offline|syncing|need-stake|waiting-for-network)' | tail -n 1)
+        STATUS=\$(echo "\$STATUS_OUTPUT" | grep -oP 'state: \K(active|standby|stopped|ready|offline|selected|syncing|need-stake|waiting-for-network)' | tail -n 1)
     fi
 
     HOSTNAME=\$(hostname)
@@ -202,6 +202,8 @@ check_status() {
         STATUS_EMOJI="♻️ syncing"
     elif [ "\$STATUS" == "need-stake" ]; then
         STATUS_EMOJI="⚠️ Need stake SHM"
+    elif [ "\$STATUS" == "selected" ]; then
+        STATUS_EMOJI="📌 Selected for validation"
     else
         STATUS_EMOJI="unknown"
     fi
