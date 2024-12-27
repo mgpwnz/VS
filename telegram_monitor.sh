@@ -38,15 +38,15 @@ TIMEZONE="Europe/Kyiv"
 
 # Function to log status with timestamp in UTC+2 (Kyiv)
 log_status() {
-    # Check if the shardeum-dashboard container is running
-    if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
+    # Check if the shardeum-validator container is running
+    if [ "\$(docker ps -q -f name=shardeum-validator)" ]; then
         # Capture the full status output with retries
         local RETRY_COUNT=0
         local MAX_RETRIES=5
         local STATUS_OUTPUT=""
         
         while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
-            STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>&1)
+            STATUS_OUTPUT=\$(docker exec shardeum-validator operator-cli status 2>&1)
 
             # Check if the output contains 'state:'
             if echo "\$STATUS_OUTPUT" | grep -q 'state:'; then
@@ -82,16 +82,16 @@ log_status() {
         # If the node is offline or stopped, try to start it
         if [[ "\$STATUS" == "offline" || "\$STATUS" == "stopped" ]]; then
             echo "[\${TIMESTAMP}] Node is \$STATUS, attempting to start..." >> \$LOG_FILE
-            docker exec shardeum-dashboard operator-cli start
+            docker exec shardeum-validator operator-cli start
         fi
     else
         TIMESTAMP=\$(TZ=\$TIMEZONE date '+%Y-%m-%d %H:%M UTC+2')
-        echo "[\${TIMESTAMP}] Error: shardeum-dashboard container is not running" >> \$LOG_FILE
-        docker start shardeum-dashboard
-            if [ "\$(docker ps -q -f name=shardeum-dashboard)" ]; then
-                echo "[\${TIMESTAMP}] Event: shardeum-dashboard container started successfully" >> \$LOG_FILE
+        echo "[\${TIMESTAMP}] Error: shardeum-validator container is not running" >> \$LOG_FILE
+        docker start shardeum-validator
+            if [ "\$(docker ps -q -f name=shardeum-validator)" ]; then
+                echo "[\${TIMESTAMP}] Event: shardeum-validator container started successfully" >> \$LOG_FILE
             else
-                echo "[\${TIMESTAMP}] Error: Failed to start shardeum-dashboard container" >> \$LOG_FILE
+                echo "[\${TIMESTAMP}] Error: Failed to start shardeum-validator container" >> \$LOG_FILE
             fi
     fi
 }
@@ -159,7 +159,7 @@ check_status() {
     
     # Try to get the status with retries
     while [ \$RETRY_COUNT -lt \$MAX_RETRIES ]; do
-        STATUS_OUTPUT=\$(docker exec shardeum-dashboard operator-cli status 2>/dev/null)
+        STATUS_OUTPUT=\$(docker exec shardeum-validator operator-cli status 2>/dev/null)
         
         # Check if the output contains 'state:'
         if echo "\$STATUS_OUTPUT" | grep -q 'state:'; then
