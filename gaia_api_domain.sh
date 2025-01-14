@@ -35,7 +35,7 @@ fi
     # Встановлення бібліотек для Python
     echo "Встановлення бібліотек для Python..."
     #pip3 install requests faker tenacity
-    pip3 install --break-system-packages requests faker tenacity
+    pip3 install requests faker tenacity
 
     # Створення Python скрипта
     echo "Створення скрипта random_chat_with_faker.py..."
