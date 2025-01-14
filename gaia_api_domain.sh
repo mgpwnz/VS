@@ -22,26 +22,12 @@ done
 install() {
     # API key
     read -p "Enter your API: " GAPI
-
-    # Шлях до файлу конфігурації
-    config_file="/root/gaianet/config.json"
-
-    # Перевірка наявності файлу конфігурації
-    if [[ ! -f "$config_file" ]]; then
-        echo "Файл конфігурації не знайдено: $config_file"
-        exit 1
-    fi
-
-    # Витягування NODE-ADDRESS з файлу конфігурації
-    node_address=$(grep -oP '"address": "\K[^"]+' "$config_file")
-
-    if [[ -z "$node_address" ]]; then
-        echo "Не вдалося знайти NODE-ADDRESS у файлі конфігурації."
-        exit 1
-    fi
-
-    echo "Витягнуто NODE-ADDRESS: $node_address"
+    read -p "Enter your DOMAIN: " DOM
     
+if [[ -z "$GAPI" || -z "$DOM" ]]; then
+    echo "API або DOMAIN не були введені. Будь ласка, спробуйте ще раз."
+    exit 1
+fi
     # Оновлення та встановлення необхідних пакетів
     echo "Оновлення пакетів..."
     apt update && apt install -y python3-pip
@@ -62,7 +48,7 @@ from faker import Faker
 from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-node_url = "https://${node_address}.gaia.domains/v1/chat/completions"
+node_url = "https://${DOM}.gaia.domains/v1/chat/completions"
 
 faker = Faker()
 
