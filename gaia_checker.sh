@@ -5,6 +5,12 @@ SCRIPT_PATH="/root/gaianet_monitor.sh"
 SERVICE_PATH="/etc/systemd/system/gaianet-monitor.service"
 LOG_PATH="/var/log/gaianet_monitor.log"
 
+# Перевірка наявності лог-файлу
+if [ ! -f "$LOG_PATH" ]; then
+    touch $LOG_PATH
+    chmod 644 $LOG_PATH
+fi
+
 # Створення скрипта для моніторингу
 echo "Створюємо скрипт для моніторингу..."
 cat << 'EOF' > $SCRIPT_PATH
@@ -16,16 +22,41 @@ export PATH="/root/gaianet/bin:$PATH"
 # URL для перевірки
 URL="http://localhost:8080/v1/info"
 
+# Лог-файл
+LOG_PATH="/var/log/gaianet_monitor.log"
+
+# Функція для зупинки та запуску GaiaNet
+restart_gaianet() {
+    echo "$(date): Restarting GaiaNet..." >> $LOG_PATH
+    gaianet stop
+    sleep 5
+    gaianet start 2>&1 | tee -a $LOG_PATH | grep -q "Port 8080 is in use"
+    if [ $? -eq 0 ]; then
+        echo "$(date): Port 8080 is in use after start. Stopping GaiaNet and retrying..." >> $LOG_PATH
+        gaianet stop
+        sleep 5
+        gaianet start >> $LOG_PATH
+    fi
+}
+
 # Виконуємо curl-запит
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST $URL)
 
-# Перевірка статусу
+# Перевірка статусу ноди
 if [ "$STATUS" -eq 000 ]; then
-    echo "$(date): Connection refused. Restarting gaianet..." >> /var/log/gaianet_monitor.log
-    gaianet stop
-    gaianet start
+    echo "$(date): Connection refused. Node is not responding." >> $LOG_PATH
+    restart_gaianet
 else
-    echo "$(date): Node is running. HTTP status: $STATUS" >> /var/log/gaianet_monitor.log
+    echo "$(date): Node is running. HTTP status: $STATUS" >> $LOG_PATH
+fi
+
+# Перевірка, чи запущена нода
+ps aux | grep -q "[w]asmedge"
+if [ $? -ne 0 ]; then
+    echo "$(date): Node process not running. Restarting GaiaNet..." >> $LOG_PATH
+    restart_gaianet
+else
+    echo "$(date): Node process is running." >> $LOG_PATH
 fi
 EOF
 
@@ -56,7 +87,10 @@ systemctl enable gaianet-monitor.service
 systemctl start gaianet-monitor.service
 
 # Перевірка статусу
-echo "Сервіс запущено. Перевірка статусу:"
-systemctl status gaianet-monitor.service
+if systemctl is-active --quiet gaianet-monitor.service; then
+    echo "Сервіс запущено успішно."
+else
+    echo "Сервіс не вдалося запустити. Перевірте логи systemd."
+fi
 
 echo "Логи доступні за шляхом: $LOG_PATH"
