@@ -81,6 +81,9 @@ After=network.target
 
 [Service]
 Type=simple
+Environment="HOME=/root"
+Environment="PATH=/root/gaianet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=/root/.wasmedge/env
 ExecStart=$SCRIPT_PATH
 Restart=always
 RestartSec=60
