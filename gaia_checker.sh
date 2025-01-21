@@ -45,6 +45,7 @@ restart_gaianet() {
         gaianet stop
         sleep 5
         gaianet start >> \$LOG_PATH
+        sleep 20
     fi
 }
 
@@ -86,7 +87,7 @@ Environment="PATH=/root/gaianet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/us
 EnvironmentFile=/root/.wasmedge/env
 ExecStart=$SCRIPT_PATH
 Restart=always
-RestartSec=60
+RestartSec=240
 
 [Install]
 WantedBy=multi-user.target
