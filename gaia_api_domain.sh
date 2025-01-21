@@ -104,7 +104,7 @@ while True:
 
     print(f"Q ({question_time}): {random_question}\nA ({reply_time}): {reply}")
 
-    delay = random.randint(480, 600)
+    delay = random.randint(120, 180)
     time.sleep(delay)
 EOF
 
