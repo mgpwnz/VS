@@ -17,7 +17,7 @@ cat << EOF > "$SCRIPT_PATH"
 #!/bin/bash
 
 # Налаштування PATH
-export PATH="/root/gaianet/bin:/root/.wasmedge/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="/root/.wasmedge/bin:/root/gaianet/bin:$PATH"
 export LD_LIBRARY_PATH="/root/.wasmedge/lib"
 export LIBRARY_PATH="/root/.wasmedge/lib"
 export C_INCLUDE_PATH="/root/.wasmedge/include"
@@ -80,7 +80,7 @@ After=network.target
 
 [Service]
 Type=simple
-Environment="PATH=/root/gaianet/bin:/root/.wasmedge/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PATH=/root/.wasmedge/bin:/root/gaianet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="LD_LIBRARY_PATH=/root/.wasmedge/lib"
 Environment="LIBRARY_PATH=/root/.wasmedge/lib"
 Environment="C_INCLUDE_PATH=/root/.wasmedge/include"
