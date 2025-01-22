@@ -12,12 +12,13 @@ LOG_PATH="/var/log/gaianet_monitor.log"
 cat << 'EOF' > "$SCRIPT_PATH"
 #!/bin/bash
 
-# Налаштування змінних середовища
-export PATH="/root/.wasmedge/bin:/root/gaianet/bin:$PATH"
-export LD_LIBRARY_PATH="/root/.wasmedge/lib"
-export LIBRARY_PATH="/root/.wasmedge/lib"
-export C_INCLUDE_PATH="/root/.wasmedge/include"
-export CPLUS_INCLUDE_PATH="/root/.wasmedge/include"
+# Завантаження середовища з файлу
+if [ -f /root/.wasmedge/env ]; then
+    source /root/.wasmedge/env
+else
+    echo "$(date): /root/.wasmedge/env не знайдено." >> /var/log/gaianet_monitor.log
+    exit 1
+fi
 
 # URL для перевірки
 URL="http://localhost:8080/v1/info"
@@ -49,6 +50,7 @@ else
     echo "$(date): Node process is running." >> "$LOG_PATH"
 fi
 EOF
+
 
 chmod +x "$SCRIPT_PATH"
 

@@ -67,7 +67,7 @@ def log_message(node, message):
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
 def send_message(node_url, message):
     try:
-        response = requests.post(node_url, json=message, headers=headers, timeout=10)
+        response = requests.post(node_url, json=message, headers=headers, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
