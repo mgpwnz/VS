@@ -7,18 +7,21 @@ LOG_PATH="/var/log/gaianet_monitor.log"
 
 # Перевірка наявності лог-файлу
 if [ ! -f "$LOG_PATH" ]; then
-    touch $LOG_PATH
-    chmod 644 $LOG_PATH
+    touch "$LOG_PATH"
+    chmod 644 "$LOG_PATH"
 fi
 
 # Створення скрипта для моніторингу
 echo "Створюємо скрипт для моніторингу..."
-cat << EOF > $SCRIPT_PATH
+cat << EOF > "$SCRIPT_PATH"
 #!/bin/bash
 
 # Налаштування PATH
-PATH=/root/gaianet/bin
-PATH=/root/.wasmedge/bin
+export PATH="/root/gaianet/bin:/root/.wasmedge/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export LD_LIBRARY_PATH="/root/.wasmedge/lib"
+export LIBRARY_PATH="/root/.wasmedge/lib"
+export C_INCLUDE_PATH="/root/.wasmedge/include"
+export CPLUS_INCLUDE_PATH="/root/.wasmedge/include"
 
 # URL для перевірки
 URL="http://localhost:8080/v1/info"
@@ -28,55 +31,60 @@ LOG_PATH="/var/log/gaianet_monitor.log"
 
 # Функція для зупинки та запуску GaiaNet
 restart_gaianet() {
-    echo "\$(date): Restarting GaiaNet..." >> \$LOG_PATH
-    gaianet stop
+    echo "\$(date): Restarting GaiaNet..." >> "\$LOG_PATH"
+    /root/gaianet/bin/gaianet stop
     sleep 5
-    gaianet start 2>&1 | tee -a \$LOG_PATH | grep -q "Port 8080 is in use"
-    if [ \$? -eq 0 ]; then
-        echo "\$(date): Port 8080 is in use after start. Stopping GaiaNet and retrying..." >> \$LOG_PATH
-        gaianet stop
+    /root/gaianet/bin/gaianet start >> "\$LOG_PATH" 2>&1
+    sleep 20
+}
+
+# Перевірка доступності порту 8080
+check_port() {
+    if lsof -i :8080 > /dev/null; then
+        echo "\$(date): Port 8080 is already in use." >> "\$LOG_PATH"
+        /root/gaianet/bin/gaianet stop
         sleep 5
-        gaianet start >> \$LOG_PATH
-        sleep 20
+        /root/gaianet/bin/gaianet start >> "\$LOG_PATH" 2>&1
     fi
 }
 
 # Виконуємо curl-запит
-STATUS=\$(curl -s -o /dev/null -w "%{http_code}" -X POST \$URL)
+STATUS=\$(curl -s -o /dev/null -w "%{http_code}" "\$URL")
 
 # Перевірка статусу ноди
 if [ "\$STATUS" -eq 000 ]; then
-    echo "\$(date): Connection refused. Node is not responding." >> \$LOG_PATH
+    echo "\$(date): Connection refused. Node is not responding." >> "\$LOG_PATH"
     restart_gaianet
 else
-    echo "\$(date): Node is running. HTTP status: \$STATUS" >> \$LOG_PATH
+    echo "\$(date): Node is running. HTTP status: \$STATUS" >> "\$LOG_PATH"
 fi
 
 # Перевірка, чи запущена нода
-ps aux | grep -q "[w]asmedge"
-if [ \$? -ne 0 ]; then
-    echo "\$(date): Node process not running. Restarting GaiaNet..." >> \$LOG_PATH
+if ! pgrep -f "[w]asmedge" > /dev/null; then
+    echo "\$(date): Node process not running. Restarting GaiaNet..." >> "\$LOG_PATH"
     restart_gaianet
 else
-    echo "\$(date): Node process is running." >> \$LOG_PATH
+    echo "\$(date): Node process is running." >> "\$LOG_PATH"
 fi
 EOF
 
 # Надаємо права на виконання
-chmod +x $SCRIPT_PATH
+chmod +x "$SCRIPT_PATH"
 
 # Створення systemd-сервісу
 echo "Створюємо systemd-сервіс..."
-cat << EOF > $SERVICE_PATH
+cat << EOF > "$SERVICE_PATH"
 [Unit]
 Description=Monitor Gaianet Node and Restart if Necessary
 After=network.target
 
 [Service]
 Type=simple
-Environment="HOME=/root"
-Environment="PATH=/root/gaianet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-EnvironmentFile=-/root/.wasmedge/env
+Environment="PATH=/root/gaianet/bin:/root/.wasmedge/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="LD_LIBRARY_PATH=/root/.wasmedge/lib"
+Environment="LIBRARY_PATH=/root/.wasmedge/lib"
+Environment="C_INCLUDE_PATH=/root/.wasmedge/include"
+Environment="CPLUS_INCLUDE_PATH=/root/.wasmedge/include"
 ExecStart=$SCRIPT_PATH
 Restart=always
 RestartSec=240
