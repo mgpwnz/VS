@@ -96,7 +96,7 @@ def send_message(node_url, message):
     try:
         api_key = get_next_api_key()
         headers["Authorization"] = f"Bearer {api_key}"
-        response = requests.post(node_url, json=message, headers=headers, timeout=10)
+        response = requests.post(node_url, json=message, headers=headers, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
