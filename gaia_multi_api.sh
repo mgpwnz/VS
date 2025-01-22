@@ -38,6 +38,11 @@ install() {
         echo "DOMAIN обов'язковий для продовження."
         exit 1
     fi
+    # Застосуємо коректну перевірку у Bash і видалимо порожні ключі
+    api_keys=""
+    api_keys+="\"${API_KEY_1}\""
+    [[ -n "$API_KEY_2" ]] && api_keys+=", \"${API_KEY_2}\""
+    [[ -n "$API_KEY_3" ]] && api_keys+=", \"${API_KEY_3}\""
 
     # Оновлення та встановлення необхідних пакетів
     echo "Оновлення пакетів..."
@@ -49,7 +54,8 @@ install() {
 
     # Створення Python скрипта
     echo "Створення скрипта random_chat_with_faker.py..."
-    cat << EOF > /usr/local/bin/random_chat_with_faker.py
+    # Формуємо Python-скрипт
+cat << EOF > /usr/local/bin/random_chat_with_faker.py
 import requests
 import random
 import logging
@@ -60,7 +66,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 # Зберігаємо API ключі у список
 api_keys = [
-    "${API_KEY_1}"${API_KEY_2:+, "${API_KEY_2}"}${API_KEY_3:+, "${API_KEY_3}"}
+    ${api_keys}
 ]
 current_key_index = 0
 
@@ -157,7 +163,6 @@ EOF
 
     echo "Служба gaia_chat.service успішно запущена. Використовуйте 'journalctl -u gaia_chat.service -f' для перегляду журналу."
 }
-
 
 uninstall() {
     systemctl stop gaia_chat.service
