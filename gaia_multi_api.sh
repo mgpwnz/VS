@@ -32,6 +32,13 @@ install() {
         read -p "Enter your API Key 3 (optional): " API_KEY_3
     fi
 
+    # Введення домену
+    read -p "Enter your DOMAIN: " DOM
+    if [[ -z "$DOM" ]]; then
+        echo "DOMAIN обов'язковий для продовження."
+        exit 1
+    fi
+
     # Оновлення та встановлення необхідних пакетів
     echo "Оновлення пакетів..."
     apt update && apt install -y python3-pip
@@ -57,6 +64,7 @@ api_keys = [
 ]
 current_key_index = 0
 
+# Домен
 node_url = "https://${DOM}.gaia.domains/v1/chat/completions"
 
 faker = Faker()
