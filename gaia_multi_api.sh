@@ -20,7 +20,7 @@ while test $# -gt 0; do
 done
 
 install() {
-    # API key
+    # Введення API ключів
     read -p "Enter your API Key 1: " API_KEY_1
     if [[ -z "$API_KEY_1" ]]; then
         echo "API Key 1 обов'язковий для продовження."
@@ -52,7 +52,9 @@ from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 # Зберігаємо API ключі у список
-api_keys = [${API_KEY_1:+f'"{API_KEY_1}"'}${API_KEY_2:+, f'"{API_KEY_2}"'}${API_KEY_3:+, f'"{API_KEY_3}"'}]
+api_keys = [
+    "${API_KEY_1}"${API_KEY_2:+, "${API_KEY_2}"}${API_KEY_3:+, "${API_KEY_3}"}
+]
 current_key_index = 0
 
 node_url = "https://${DOM}.gaia.domains/v1/chat/completions"
@@ -147,7 +149,6 @@ EOF
 
     echo "Служба gaia_chat.service успішно запущена. Використовуйте 'journalctl -u gaia_chat.service -f' для перегляду журналу."
 }
-
 
 uninstall() {
     systemctl stop gaia_chat.service

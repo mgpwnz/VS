@@ -4,7 +4,6 @@
 SCRIPT_PATH="/root/gaianet_monitor.sh"
 SERVICE_PATH="/etc/systemd/system/gaianet-monitor.service"
 LOG_PATH="/var/log/gaianet_monitor.log"
-ENV_PATH="/root/.wasmedge/env"
 
 # Перевірка наявності лог-файлу
 if [ ! -f "$LOG_PATH" ]; then
@@ -16,14 +15,6 @@ fi
 echo "Створюємо скрипт для моніторингу..."
 cat << EOF > $SCRIPT_PATH
 #!/bin/bash
-
-# Завантаження змінних середовища
-if [ -f "$ENV_PATH" ]; then
-    source $ENV_PATH
-else
-    echo "\$(date): Не вдалося знайти файл зі змінними середовища $ENV_PATH" >> /var/log/gaianet_monitor.log
-    exit 1
-fi
 
 # Налаштування PATH
 export PATH="/root/gaianet/bin:\$PATH"
