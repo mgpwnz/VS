@@ -158,6 +158,7 @@ EOF
     echo "Служба gaia_chat.service успішно запущена. Використовуйте 'journalctl -u gaia_chat.service -f' для перегляду журналу."
 }
 
+
 uninstall() {
     systemctl stop gaia_chat.service
     systemctl disable gaia_chat.service
