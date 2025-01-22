@@ -17,7 +17,8 @@ cat << EOF > $SCRIPT_PATH
 #!/bin/bash
 
 # Налаштування PATH
-export PATH="/root/gaianet/bin:\$PATH"
+PATH=/root/gaianet/bin
+PATH=/root/.wasmedge/bin
 
 # URL для перевірки
 URL="http://localhost:8080/v1/info"
@@ -75,7 +76,7 @@ After=network.target
 Type=simple
 Environment="HOME=/root"
 Environment="PATH=/root/gaianet/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-EnvironmentFile=/root/.wasmedge/env
+EnvironmentFile=-/root/.wasmedge/env
 ExecStart=$SCRIPT_PATH
 Restart=always
 RestartSec=240
