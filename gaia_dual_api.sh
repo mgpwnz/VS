@@ -24,17 +24,19 @@ install() {
     read -p "Enter your API: " GAPI
     read -p "Enter your DOMAIN: " DOM
     
-    if [[ -z "$GAPI" || -z "$DOM" ]]; then
-        echo "API або DOMAIN не були введені. Будь ласка, спробуйте ще раз."
-        exit 1
-    fi
-    
+if [[ -z "$GAPI" || -z "$DOM" ]]; then
+    echo "API або DOMAIN не були введені. Будь ласка, спробуйте ще раз."
+    exit 1
+fi
+    # Оновлення та встановлення необхідних пакетів
     echo "Оновлення пакетів..."
     apt update && apt install -y python3-pip
 
+    # Встановлення бібліотек для Python
     echo "Встановлення бібліотек для Python..."
     pip3 install requests faker tenacity
 
+    # Створення Python скрипта
     echo "Створення скрипта random_chat_with_faker.py..."
     cat << EOF > /usr/local/bin/random_chat_with_faker.py
 import requests
@@ -81,32 +83,53 @@ def extract_reply(response):
         return response['choices'][0]['message']['content']
     return "No reply"
 
-conversation = [
-    {"role": "system", "content": "You are a helpful assistant."}
-]
+previous_reply = ""
+repeat_count = 0
 
 while True:
-    if len(conversation) > 10:
-        conversation = conversation[:1]  # Очищення історії діалогу, залишаємо лише system
+    random_question = faker.sentence(nb_words=10)
+    message = {
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": random_question}
+        ]
+    }
 
-    message = {"messages": conversation}
+    question_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     response = send_message(node_url, message)
     reply = extract_reply(response)
 
-    if reply == "No reply":
-        print("No reply received, retrying...")
+    reply_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    log_message("Node replied", f"Q ({question_time}): {random_question} A ({reply_time}): {reply}")
+
+    print(f"Q ({question_time}): {random_question}\nA ({reply_time}): {reply}")
+
+    # Якщо не було відповіді або тайм-аут
+    if reply == "No reply" or "Request timed out" in reply:
+        print("No reply or request timed out. Trying again...")
         continue
 
-    question_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message("Node", f"{question_time}: {reply}")
-    print(f"{question_time}: {reply}")
+    # Якщо відповідь повторюється кілька разів підряд
+    if reply == previous_reply:
+        repeat_count += 1
+        if repeat_count >= 3:
+            print("Same response repeated. Generating new question...")
+            random_question = faker.sentence(nb_words=10)
+            repeat_count = 0
+    else:
+        repeat_count = 0
 
-    conversation.append({"role": "assistant", "content": reply})
-    time.sleep(random.randint(120, 180))
+    previous_reply = reply
+
+    delay = random.randint(10, 30)
+    time.sleep(delay)
 EOF
 
     chmod +x /usr/local/bin/random_chat_with_faker.py
 
+    # Створення systemd юніт-файлу
     echo "Створення systemd юніт-файлу для служби gaia_chat.service..."
     cat << EOF > /etc/systemd/system/gaia_chat.service
 [Unit]
