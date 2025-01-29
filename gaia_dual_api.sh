@@ -20,43 +20,21 @@ while test $# -gt 0; do
 done
 
 install() {
-    # Шлях до файлу конфігурації
-    config_file="/root/gaianet/config.json"
-
-    # Перевірка наявності файлу конфігурації
-    if [[ ! -f "$config_file" ]]; then
-        echo "Файл конфігурації не знайдено: $config_file"
-        exit 1
-    fi
-
-    # Витягування NODE-ADDRESS з файлу конфігурації
-    node_address=$(grep -oP '"address": "\K[^"]+' "$config_file")
-
-    # Перевірка, чи було успішно витягнуто NODE-ADDRESS
-    if [[ -z "$node_address" ]]; then
-        echo "Не вдалося знайти NODE-ADDRESS у файлі конфігурації."
-        exit 1
-    fi
-
-    echo "Витягнуто NODE-ADDRESS: $node_address"
     # API key
     read -p "Enter your API: " GAPI
     read -p "Enter your DOMAIN: " DOM
     
-if [[ -z "$GAPI" || -z "$DOM" ]]; then
-    echo "API або DOMAIN не були введені. Будь ласка, спробуйте ще раз."
-    exit 1
-fi
-    # Оновлення та встановлення необхідних пакетів
+    if [[ -z "$GAPI" || -z "$DOM" ]]; then
+        echo "API або DOMAIN не були введені. Будь ласка, спробуйте ще раз."
+        exit 1
+    fi
+    
     echo "Оновлення пакетів..."
     apt update && apt install -y python3-pip
 
-    # Встановлення бібліотек для Python
     echo "Встановлення бібліотек для Python..."
-    #pip3 install requests faker tenacity
     pip3 install requests faker tenacity
 
-    # Створення Python скрипта
     echo "Створення скрипта random_chat_with_faker.py..."
     cat << EOF > /usr/local/bin/random_chat_with_faker.py
 import requests
@@ -67,14 +45,11 @@ from faker import Faker
 from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_fixed
 
+node_url = "https://${DOM}.gaia.domains/v1/chat/completions"
 
-gpt_node_url = f"https://{$DOM}.gaia.domains/v1/chat/completions"
-gaia_node_url = f"https://{$node_address}.gaia.domains/v1/chat/completions"
-
-# Підготовка
 faker = Faker()
-api_key = "${GAPI}"
 
+api_key = "${GAPI}"
 headers = {
     "accept": "application/json",
     "Content-Type": "application/json",
@@ -93,9 +68,11 @@ def send_message(node_url, message):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
+        print("Request timed out")
         logging.error("Request timed out")
         return None
     except requests.exceptions.RequestException as e:
+        print(f"Failed to get response from API: {e}")
         logging.error(f"Failed to get response from API: {e}")
         return None
 
@@ -104,54 +81,32 @@ def extract_reply(response):
         return response['choices'][0]['message']['content']
     return "No reply"
 
-# Початкове випадкове питання
-random_question = faker.sentence(nb_words=10)
+conversation = [
+    {"role": "system", "content": "You are a helpful assistant."}
+]
 
 while True:
+    if len(conversation) > 10:
+        conversation = conversation[:1]  # Очищення історії діалогу, залишаємо лише system
+
+    message = {"messages": conversation}
+    response = send_message(node_url, message)
+    reply = extract_reply(response)
+
+    if reply == "No reply":
+        print("No reply received, retrying...")
+        continue
+
     question_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message("Node", f"{question_time}: {reply}")
+    print(f"{question_time}: {reply}")
 
-    # Запит до GPT
-    gpt_message = {
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": random_question}
-        ]
-    }
-
-    gpt_response = send_message(gpt_node_url, gpt_message)
-    gpt_reply = extract_reply(gpt_response)
-
-    reply_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message("GPT", f"Q ({question_time}): {random_question} A ({reply_time}): {gpt_reply}")
-    print(f"GPT Q ({question_time}): {random_question}\nGPT A ({reply_time}): {gpt_reply}")
-
-    # Запит до GaiaNet з відповіддю GPT
-    gaia_message = {
-        "messages": [
-            {"role": "system", "content": "You are a wise AI."},
-            {"role": "user", "content": gpt_reply}
-        ]
-    }
-
-    gaia_response = send_message(gaia_node_url, gaia_message)
-    gaia_reply = extract_reply(gaia_response)
-
-    reply_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message("GaiaNet", f"Q ({question_time}): {gpt_reply} A ({reply_time}): {gaia_reply}")
-    print(f"GaiaNet Q ({question_time}): {gpt_reply}\nGaiaNet A ({reply_time}): {gaia_reply}")
-
-    # Використовуємо відповідь GaiaNet як наступне питання для GPT
-    random_question = gaia_reply
-
-    # Затримка між запитами 
-    delay = random.randint(5, 10)
-    time.sleep(delay)
-
+    conversation.append({"role": "assistant", "content": reply})
+    time.sleep(random.randint(120, 180))
 EOF
 
     chmod +x /usr/local/bin/random_chat_with_faker.py
 
-    # Створення systemd юніт-файлу
     echo "Створення systemd юніт-файлу для служби gaia_chat.service..."
     cat << EOF > /etc/systemd/system/gaia_chat.service
 [Unit]
