@@ -82,7 +82,7 @@ import logging
 # ------------------------------------------------------------------------------------------
 
 # Налаштування логування в файл
-log_file = f'/var/log/chat_log_{node_name}.txt'  # Заміна ${node_name} на f-строку
+log_file = f'/var/log/chat_log_${node_name}.txt'
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 file_handler = logging.FileHandler(log_file)
 file_handler.setLevel(logging.INFO)
