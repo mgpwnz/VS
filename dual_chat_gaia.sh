@@ -74,15 +74,8 @@ import json
 import time
 import logging
 
-# ------------------------------------------------------------------------------------------
-'''
-Просто меняем ссылку на свою ноду, далее запускаем.
-Будет автоматически идти диалог с задержкой между сообщениями 10 сек.
-'''
-# ------------------------------------------------------------------------------------------
 
-# Налаштування логування в файл
-log_file = f'/var/log/chat_log_${node_name}.txt'
+log_file = f'/var/log/chat_log_${node_name}.txt' 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 file_handler = logging.FileHandler(log_file)
 file_handler.setLevel(logging.INFO)
@@ -192,7 +185,7 @@ while True:
     else:
         gpt_answer = client.extract_answer(gpt_response).replace('\n', ' ')
         logging.info(f"Відповідь GPT: {gpt_answer}")
-        print(gpt_answer)
+        print(f"GPT: {gpt_answer}")  # Виведення відповіді в консоль
 
     custom_response = client.send_custom_request(gpt_answer + ' Tell me a random theme to speak')
 
@@ -205,11 +198,10 @@ while True:
     else:
         custom_answer = client.extract_answer(custom_response).replace('\n', ' ')
         logging.info(f"Відповідь GaiaNet: {custom_answer}")
-        print(custom_answer)
+        print(f"GaiaNet: {custom_answer}")  # Виведення відповіді в консоль
 
     gpt_response = client.send_gpt_request(custom_answer)
     time.sleep(10)  # Затримка 10 секунд між запитами
-
 
 EOF
 
