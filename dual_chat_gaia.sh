@@ -82,7 +82,7 @@ import logging
 # ------------------------------------------------------------------------------------------
 
 # Налаштування логування в файл
-log_file = '/var/log/chat_log_${node_name}.txt'
+log_file = f'/var/log/chat_log_{node_name}.txt'  # Заміна ${node_name} на f-строку
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 file_handler = logging.FileHandler(log_file)
 file_handler.setLevel(logging.INFO)
@@ -103,17 +103,21 @@ class DualAPIClient:
 
     def _send_request(self, config):
         try:
+            logging.info(f"Відправка запиту: {json.dumps(config['data'], indent=2)}")  # Логування запиту
             response = requests.post(config['url'], headers=config['headers'], data=json.dumps(config['data']))
             if response.status_code == 200:
+                logging.info(f"Отримано відповідь: {response.json()}")  # Логування відповіді
                 return response.json()
             else:
                 # Возвращаем код ошибки и текст ответа сервера
+                logging.error(f"Помилка запиту: {response.status_code} - {response.text}")
                 return {
                     "error": response.status_code,
                     "message": response.text
                 }
         except requests.exceptions.RequestException as e:
-            # Ловим исключения сети, например, таймауты
+            # Ловим виключення мережі
+            logging.error(f"Помилка мережі: {str(e)}")
             return {
                 "error": "network_error",
                 "message": str(e)
@@ -152,7 +156,7 @@ gpt_config = {
     'data': {
         "messages": [
             {"role": "system", "content": 'You answer with 1 short phrase'},
-            {"role": "user", "content": ""}
+            {"role": "user", "content": ""}  # Тут можна передати повідомлення користувача
         ]
     }
 }
@@ -166,7 +170,7 @@ gaianet_config = {
     'data': {
         "messages": [
             {"role": "system", "content": "You answer with 1 short phrase"},
-            {"role": "user", "content": ""}
+            {"role": "user", "content": ""}  # Тут також передається повідомлення
         ]
     }
 }
@@ -176,7 +180,10 @@ client = DualAPIClient(gpt_config, gaianet_config)
 initial_question = "Let's go tell about China!"
 gpt_response = client.send_gpt_request(initial_question)
 
+logging.info(f"Запит до GPT: {initial_question}")  # Логування початку діалогу
+
 while True:
+    logging.info(f"Запит від GPT: {gpt_response.get('choices', [{}])[0].get('message', {}).get('content', '')}")
     print(f'\n{GREEN}' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + f" [Вопрос от GPT]:{RESET}")
 
     if "error" in gpt_response:
@@ -184,10 +191,12 @@ while True:
         gpt_answer = "Error occurred. Please retry."
     else:
         gpt_answer = client.extract_answer(gpt_response).replace('\n', ' ')
+        logging.info(f"Відповідь GPT: {gpt_answer}")
         print(gpt_answer)
 
     custom_response = client.send_custom_request(gpt_answer + ' Tell me a random theme to speak')
 
+    logging.info(f"Відправка запиту GaiaNet: {gpt_answer + ' Tell me a random theme to speak'}")
     print(f'\n{GREEN}' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + f" [Ответ GaiaNet]:{RESET}")
 
     if "error" in custom_response:
@@ -195,10 +204,12 @@ while True:
         custom_answer = "Error occurred. Please retry."
     else:
         custom_answer = client.extract_answer(custom_response).replace('\n', ' ')
+        logging.info(f"Відповідь GaiaNet: {custom_answer}")
         print(custom_answer)
 
     gpt_response = client.send_gpt_request(custom_answer)
     time.sleep(10)  # Затримка 10 секунд між запитами
+
 
 EOF
 
