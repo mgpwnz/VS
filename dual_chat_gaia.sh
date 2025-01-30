@@ -81,7 +81,14 @@ import logging
 '''
 # ------------------------------------------------------------------------------------------
 
+# Налаштування логування в файл
+log_file = '/var/log/chat_log_${node_name}.txt'
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+file_handler.setFormatter(formatter)
+logging.getLogger().addHandler(file_handler)
 
 gaianetLink = 'https://${node_address}.gaia.domains/v1/chat/completions'
 
@@ -191,8 +198,7 @@ while True:
         print(custom_answer)
 
     gpt_response = client.send_gpt_request(custom_answer)
-    time.sleep(1)
-
+    time.sleep(10)  # Затримка 10 секунд між запитами
 
 EOF
 
