@@ -25,14 +25,14 @@ done
 
 configs=(
     "/root/gaianet/config.json"
-    "/root/node2/config.json"
-    "/root/node3/config.json"
-    "/root/node4/config.json"
-    "/root/node5/config.json"
-    "/root/node6/config.json"
-    "/root/node7/config.json"
-    "/root/node8/config.json"
-    "/root/node9/config.json"
+    "/root/node-2/config.json"
+    "/root/node-3/config.json"
+    "/root/node-4/config.json"
+    "/root/node-5/config.json"
+    "/root/node-6/config.json"
+    "/root/node-7/config.json"
+    "/root/node-8/config.json"
+    "/root/node-9/config.json"
 )
 
 install() {
