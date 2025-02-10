@@ -35,4 +35,12 @@ for config in "${configs[@]}"; do
     fi
 done
 
-
+# Видалення
+for config in "${configs[@]}"; do
+    if [[ -d "$config" ]]; then
+        rm -rf "$config"
+        echo "Каталог $config видалено."
+    else
+        echo "Каталог $config не знайдено, пропускаємо..."
+    fi
+done
