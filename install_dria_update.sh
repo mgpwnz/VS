@@ -8,10 +8,31 @@ SERVICE_FILE="/etc/systemd/system/dria-update.service"
 TIMER_FILE="/etc/systemd/system/dria-update.timer"
 GREEN="\033[1;32m"
 RESET="\033[0m"
+ENV_FILE="/root/.dria_env"
 
-read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
-read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
-read -p "👤 Enter REMOTE_USER (usually 'driauser'): " REMOTE_USER
+# === Load from .env if exists ===
+if [[ -f "$ENV_FILE" ]]; then
+  source "$ENV_FILE"
+fi
+
+# === Ask for values if not set ===
+if [[ -z "$HOST_TAG" ]]; then
+  read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
+fi
+if [[ -z "$REMOTE_HOST" ]]; then
+  read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
+fi
+if [[ -z "$REMOTE_USER" ]]; then
+  read -p "👤 Enter REMOTE_USER (usually 'driauser'): " REMOTE_USER
+fi
+
+# === Save to .env for future runs ===
+cat > "$ENV_FILE" <<EOF
+HOST_TAG="$HOST_TAG"
+REMOTE_HOST="$REMOTE_HOST"
+REMOTE_USER="$REMOTE_USER"
+EOF
+
 REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 LOG_DIR="/var/log/dria"
 
