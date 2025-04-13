@@ -36,20 +36,26 @@ pip3 install python-telegram-bot python-dotenv
 
 # 7. Завантаження коду бота
 cat > "$APP_DIR/dria_bot.py" <<'EOF'
+# -*- coding: utf-8 -*-
 import os
 import json
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-load_dotenv(dotenv_path=".env")
+# === Load .env config ===
+load_dotenv(".env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 AUTHORIZED_USER_ID = int(os.getenv("AUTHORIZED_USER_ID"))
 STATS_DIR = os.getenv("STATS_DIR", "/home/driauser/dria_stats")
+DATA_TIMEOUT_MINUTES = 10
 
+# === Access control ===
 def is_authorized(user_id):
     return user_id == AUTHORIZED_USER_ID
 
+# === Load all .json stats ===
 def load_stats():
     data = {}
     for file in os.listdir(STATS_DIR):
@@ -58,41 +64,69 @@ def load_stats():
         try:
             with open(os.path.join(STATS_DIR, file)) as f:
                 server_data = json.load(f)
-                data[server_data["hostname"]] = server_data["points"]
+                hostname = server_data.get("hostname", "unknown")
+                timestamp = server_data.get("timestamp", "")
+                points = server_data.get("points", {})
+                data[hostname] = {
+                    "timestamp": timestamp,
+                    "points": points
+                }
         except Exception:
             continue
     return data
 
+# === Format message for Telegram ===
 def format_stats(stats):
     lines = []
-    for hostname in sorted(stats):
-        lines.append(f"🖥 *{hostname}*")
-        for node, pts in sorted(stats[hostname].items()):
-            lines.append(f"  └ {node}: *{pts}* Points")
-    return "\n".join(lines) or "Дані не знайдено."
+    now = datetime.now(timezone.utc)
 
+    for hostname in sorted(stats):
+        ts_str = stats[hostname].get("timestamp", "")
+        try:
+            ts = datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            age_minutes = (now - ts).total_seconds() / 60
+            status_emoji = "✅" if age_minutes <= DATA_TIMEOUT_MINUTES else "⚠️"
+            ts_display = ts.strftime("%Y-%m-%d %H:%M UTC")
+        except Exception:
+            ts_display = "UNKNOWN"
+            status_emoji = "⚠️"
+
+        lines.append(f"🖥 *{hostname}* ({ts_display}) {status_emoji}")
+        for node, pts in sorted(stats[hostname]["points"].items()):
+            if pts >= 0:
+                lines.append(f"  └ {node}: *{pts}* Points")
+            else:
+                lines.append(f"  └ {node}: ❌ Error")
+    return "\n".join(lines) or "No data found."
+
+# === /start command ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update.effective_user.id):
-        await update.message.reply_text("⛔️ Доступ заборонено.")
+        await update.message.reply_text("⛔️ Access denied.")
         return
-    keyboard = [[InlineKeyboardButton("📊 Показати DRIA Points", callback_data="get_points")]]
-    await update.message.reply_text("Натисни кнопку:", reply_markup=keyboard)
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Show DRIA Points", callback_data="get_points")]
+    ])
+    await update.message.reply_text("Click the button below:", reply_markup=keyboard)
 
+# === Handle button click ===
 async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not is_authorized(query.from_user.id):
-        await query.answer("⛔️ Доступ заборонено", show_alert=True)
+        await query.answer("⛔️ Access denied", show_alert=True)
         return
     await query.answer()
     stats = load_stats()
     await query.edit_message_text(format_stats(stats), parse_mode="Markdown")
 
+# === Start bot ===
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_button, pattern="get_points"))
-    print("✅ Бот запущено")
+    print("✅ Bot is running")
     app.run_polling()
+
 EOF
 
 chown -R driauser:driauser "$APP_DIR"
