@@ -1,25 +1,28 @@
 #!/bin/bash
 
-read -p "👉 Введи унікальне ім’я цього сервера (HOST_TAG): " HOST_TAG
-read -p "🌐 Введи IP або домен основного сервера з ботом (REMOTE_HOST): " REMOTE_HOST
+echo "📦 Встановлення таймера DRIA Points оновлення..."
 
-REMOTE_USER="root"
-REMOTE_DIR="/root/dria_stats"
+read -p "🔤 Введи HOST_TAG (ім’я цього сервера): " HOST_TAG
+read -p "🌐 Введи REMOTE_HOST (IP або '127.0.0.1' для локального сервера): " REMOTE_HOST
+read -p "👤 Введи REMOTE_USER (наприклад, 'driauser'): " REMOTE_USER
+
+REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 LOG_DIR="/var/log/dria"
-TEMP_SCRIPT="/root/update_points.sh"
+SCRIPT_PATH="/root/update_points.sh"
 
 echo ""
-echo "🔑 Генеруємо SSH ключ, якщо не існує..."
-[ -f ~/.ssh/id_rsa ] || ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+if [[ "$REMOTE_HOST" != "127.0.0.1" && "$REMOTE_HOST" != "localhost" ]]; then
+  echo "🔑 Копіюємо SSH ключ на $REMOTE_USER@$REMOTE_HOST..."
+  ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa <<< y >/dev/null 2>&1
+  ssh-copy-id "$REMOTE_USER@$REMOTE_HOST"
+else
+  echo "ℹ️ REMOTE_HOST вказано як локальний — SSH не використовується."
+fi
 
 echo ""
-echo "📤 Надсилаємо SSH ключ на $REMOTE_USER@$REMOTE_HOST..."
-ssh-copy-id -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST"
+echo "📝 Створюємо $SCRIPT_PATH..."
 
-echo ""
-echo "📝 Створюємо скрипт $TEMP_SCRIPT..."
-
-cat > "$TEMP_SCRIPT" <<EOF
+cat > "$SCRIPT_PATH" <<EOF
 #!/bin/bash
 
 HOST_TAG="$HOST_TAG"
@@ -28,9 +31,11 @@ REMOTE_HOST="$REMOTE_HOST"
 REMOTE_DIR="$REMOTE_DIR"
 LOG_DIR="$LOG_DIR"
 TEMP_FILE="/tmp/\${HOST_TAG}.json"
+TIMESTAMP=\$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 echo "{" > "\$TEMP_FILE"
 echo "  \\"hostname\\": \\"\$HOST_TAG\\"," >> "\$TEMP_FILE"
+echo "  \\"timestamp\\": \\"\$TIMESTAMP\\"," >> "\$TEMP_FILE"
 echo "  \\"points\\": {" >> "\$TEMP_FILE"
 
 first=true
@@ -51,13 +56,18 @@ echo "" >> "\$TEMP_FILE"
 echo "  }" >> "\$TEMP_FILE"
 echo "}" >> "\$TEMP_FILE"
 
-scp -q "\$TEMP_FILE" "\$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR/\$HOST_TAG.json"
+if [[ "\$REMOTE_HOST" == "127.0.0.1" || "\$REMOTE_HOST" == "localhost" ]]; then
+  echo "📁 Копіюємо локально → \$REMOTE_DIR/\$HOST_TAG.json"
+  cp "\$TEMP_FILE" "\$REMOTE_DIR/\$HOST_TAG.json"
+else
+  echo "📤 Надсилаємо через SCP → \$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR"
+  scp -q "\$TEMP_FILE" "\$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR/\$HOST_TAG.json"
+fi
 EOF
 
-chmod +x "$TEMP_SCRIPT"
+chmod +x "$SCRIPT_PATH"
 
-echo ""
-echo "🛠 Створюємо systemd сервіс і таймер..."
+echo "🛠 Створюємо systemd unit і таймер..."
 
 cat > /etc/systemd/system/dria-update.service <<EOF
 [Unit]
@@ -65,7 +75,7 @@ Description=Push DRIA Points to central bot
 
 [Service]
 Type=oneshot
-ExecStart=$TEMP_SCRIPT
+ExecStart=$SCRIPT_PATH
 EOF
 
 cat > /etc/systemd/system/dria-update.timer <<EOF
@@ -81,10 +91,8 @@ Unit=dria-update.service
 WantedBy=timers.target
 EOF
 
-echo ""
-echo "🚀 Активуємо таймер..."
+echo "🔄 Перезапускаємо systemd та активуємо таймер..."
 systemctl daemon-reload
 systemctl enable --now dria-update.timer
 
-echo ""
-echo "✅ Готово! Сервер $HOST_TAG тепер буде відправляти DRIA Points на $REMOTE_HOST кожні 3 хв."
+echo "✅ Готово! DRIA Points будуть оновлюватись автоматично кожні 3 хвилини."
