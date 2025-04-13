@@ -18,18 +18,23 @@ SSH_KEY_PATH="$HOME/.ssh/id_rsa"
 
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
   echo "ℹ️ You are on the main server (bot)."
-  read -p "📥 Paste public key of a worker node to authorize access (leave empty to skip): " PUBKEY
-  if [[ -n "$PUBKEY" ]]; then
+  while true; do
+    read -p "📥 Paste public key of a worker node to authorize access (or leave empty to stop): " PUBKEY
+    if [[ -z "$PUBKEY" ]]; then
+      break
+    fi
     mkdir -p /home/$REMOTE_USER/.ssh
     touch /home/$REMOTE_USER/.ssh/authorized_keys
     chmod 700 /home/$REMOTE_USER/.ssh
     chmod 600 /home/$REMOTE_USER/.ssh/authorized_keys
-    grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys || echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
+    if grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys; then
+      echo "⚠️ This key already exists. Skipping."
+    else
+      echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
+      echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
+    fi
     chown -R $REMOTE_USER:$REMOTE_USER /home/$REMOTE_USER/.ssh
-    echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
-  else
-    echo "➡️ Skipping key addition."
-  fi
+  done
 else
   echo "🔑 This is a worker node."
   if [[ ! -f "$SSH_KEY_PATH" ]]; then
