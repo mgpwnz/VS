@@ -36,17 +36,32 @@ while true; do
   SERVICE_PATH="/etc/systemd/system/$SESSION_NAME.service"
   LOG_PATH="$LOG_DIR/$SESSION_NAME.log"
 
+  # Якщо сервіс вже існує — пропускаємо
   if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service"; then
-    echo "Сервіс $SESSION_NAME вже існує. Пропускаємо..."
+    echo "⚠️  Сервіс $SESSION_NAME вже існує. Пропускаємо..."
     PORT=$((PORT + 1))
     INDEX=$((INDEX + 1))
     continue
   fi
 
-  COUNT=$((RANDOM % 3 + 1))
-  SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
+  # Якщо .env файл вже існує
+  if [[ -f "$ENV_PATH" ]]; then
+    echo "⚠️  Конфігурація $ENV_PATH вже існує."
+    read -p "Вибери дію: (O)verwrite / (U)se existing / (S)kip [O/U/S]: " ACTION
+    ACTION=${ACTION^^}  # upper case
+    if [[ "$ACTION" == "S" ]]; then
+      echo "⏭ Пропущено $SESSION_NAME"
+      PORT=$((PORT + 1))
+      INDEX=$((INDEX + 1))
+      continue
+    elif [[ "$ACTION" == "U" ]]; then
+      echo "✅ Використано існуючий .env"
+    else
+      echo "🔁 Перезаписуємо конфігурацію..."
+      COUNT=$((RANDOM % 3 + 1))
+      SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
 
-  cat > "$ENV_PATH" <<EOF
+      cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
 DKN_MODELS=$SELECTED_MODELS
@@ -74,8 +89,43 @@ JINA_API_KEY=
 ## Log levels
 RUST_LOG=none
 EOF
+    fi
+  else
+    # Якщо файлу немає — створюємо новий
+    COUNT=$((RANDOM % 3 + 1))
+    SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
 
-  echo "✅ Збережено: $ENV_PATH"
+    cat > "$ENV_PATH" <<EOF
+## DRIA ##
+DKN_WALLET_SECRET_KEY=$PRIVATEKEY
+DKN_MODELS=$SELECTED_MODELS
+DKN_P2P_LISTEN_ADDR=/ip4/0.0.0.0/tcp/$PORT
+DKN_RELAY_NODES=
+DKN_BOOTSTRAP_NODES=
+DKN_BATCH_SIZE=
+
+## Ollama (if used, optional) ##
+OLLAMA_HOST=http://127.0.0.1
+OLLAMA_PORT=11434
+OLLAMA_AUTO_PULL=true
+
+## Open AI (if used, required) ##
+OPENAI_API_KEY=
+## Gemini (if used, required) ##
+GEMINI_API_KEY=$API
+## Open Router (if used, required) ##
+OPENROUTER_API_KEY=
+## Serper (optional) ##
+SERPER_API_KEY=
+## Jina (optional) ##
+JINA_API_KEY=
+
+## Log levels
+RUST_LOG=none
+EOF
+  fi
+
+  echo "✅ Конфігурація: $ENV_PATH"
 
   cat > "$SERVICE_PATH" <<EOF
 [Unit]
@@ -96,7 +146,7 @@ StandardError=append:$LOG_PATH
 WantedBy=multi-user.target
 EOF
 
-  echo "✅ Створено systemd сервіс: $SERVICE_PATH"
+  echo "✅ Сервіс: $SERVICE_PATH"
   RELOAD_NEEDED=true
 
   PORT=$((PORT + 1))
@@ -104,7 +154,7 @@ EOF
 done
 
 if $RELOAD_NEEDED; then
-  echo "🔄 Оновлюємо systemd..."
+  echo "🔄 Оновлення systemd..."
   systemctl daemon-reexec
   systemctl daemon-reload
   systemctl list-units --type=service | grep dria
