@@ -54,6 +54,7 @@ if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
       echo "⚠️ This key already exists. Skipping."
     else
       echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
+      echo "" >> /home/$REMOTE_USER/.ssh/authorized_keys  # Ensure newline
       echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
     fi
     chown -R $REMOTE_USER:$REMOTE_USER /home/$REMOTE_USER/.ssh
