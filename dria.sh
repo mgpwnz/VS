@@ -11,11 +11,9 @@ MODELS_LIST=(
 
 # Початковий порт
 PORT=4002
-
-# Лічильник конфігурацій
 INDEX=2
 
-# Шлях до конфігів
+# Каталог конфігурацій
 CONFIG_DIR="/root/.dria/dkn-compute-launcher"
 mkdir -p "$CONFIG_DIR"
 
@@ -29,30 +27,31 @@ while true; do
   read -p "Введи приватний ключ (або залиш порожнім для виходу): " PRIVATEKEY
   [[ -z "$PRIVATEKEY" ]] && echo "Вихід." && break
 
-  # Пошук наступного доступного порту
+  # Знаходимо вільний порт
   while ! is_port_available $PORT; do
-    echo "Порт $PORT зайнятий, пробую наступний..."
+    echo "Порт $PORT зайнятий, шукаємо далі..."
     PORT=$((PORT + 1))
     INDEX=$((INDEX + 1))
   done
 
   SESSION_NAME="dria$INDEX"
-  FILENAME="$CONFIG_DIR/.env.$SESSION_NAME"
+  ENV_PATH="$CONFIG_DIR/.env.$SESSION_NAME"
+  SERVICE_PATH="/etc/systemd/system/$SESSION_NAME.service"
 
-  # Перевірка чи вже існує tmux-сесія з таким ім’ям
-  if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-    echo "Tmux-сесія $SESSION_NAME вже існує, пропускаємо."
+  # Якщо сервіс вже існує — пропускаємо
+  if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service"; then
+    echo "Сервіс $SESSION_NAME вже існує. Пропускаємо..."
     PORT=$((PORT + 1))
     INDEX=$((INDEX + 1))
     continue
   fi
 
-  # Вибір випадкових моделей
+  # Вибираємо випадкові моделі
   COUNT=$((RANDOM % 3 + 1))
   SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
 
-  # Створення .env файлу
-  cat > "$FILENAME" <<EOF
+  # Генерація .env файлу
+  cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
 DKN_MODELS=$SELECTED_MODELS
@@ -81,13 +80,36 @@ JINA_API_KEY=
 RUST_LOG=none
 EOF
 
-  echo "Конфігурацію збережено в $FILENAME"
+  echo "✅ Збережено: $ENV_PATH"
 
-  # Створення tmux-сесії та запуск з PATH і коректним Ctrl+C
-  tmux new-session -d -s "$SESSION_NAME" "bash -c 'export PATH=\"/root/.dria/bin:\$PATH\" && exec dkn-compute-launcher --profile $SESSION_NAME start'"
-  echo "Сесія $SESSION_NAME запущена в tmux."
+  # Генерація systemd-сервісу
+  cat > "$SERVICE_PATH" <<EOF
+[Unit]
+Description=Dria Compute Node - $SESSION_NAME
+After=network.target
 
-  # Збільшуємо порт та індекс
+[Service]
+EnvironmentFile=$ENV_PATH
+ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION_NAME start
+Restart=on-failure
+RestartSec=5
+User=root
+WorkingDirectory=/root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  echo "✅ Створено systemd сервіс: $SERVICE_PATH"
+
+  # Перезавантажуємо systemd та запускаємо сервіс
+  systemctl daemon-reload
+  systemctl enable --now "$SESSION_NAME.service"
+
+  echo "🚀 Сервіс $SESSION_NAME запущено (порт $PORT, моделі: $SELECTED_MODELS)"
+
+  # Переходимо до наступного
   PORT=$((PORT + 1))
   INDEX=$((INDEX + 1))
 done
+
