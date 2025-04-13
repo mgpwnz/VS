@@ -20,6 +20,10 @@ PORT=4002
 # Лічильник конфігурацій
 INDEX=2
 
+# Шлях до конфігів
+CONFIG_DIR="/root/.dria/dkn-compute-launcher"
+mkdir -p "$CONFIG_DIR"
+
 # Функція для перевірки, чи порт вільний
 is_port_available() {
   ! lsof -iTCP:$1 -sTCP:LISTEN >/dev/null
@@ -38,7 +42,7 @@ while true; do
   done
 
   SESSION_NAME="dria$INDEX"
-  FILENAME=".env.$SESSION_NAME"
+  FILENAME="$CONFIG_DIR/.env.$SESSION_NAME"
 
   # Перевірка чи вже існує tmux-сесія з таким ім’ям
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
@@ -84,8 +88,8 @@ EOF
 
   echo "Конфігурацію збережено в $FILENAME"
 
-  # Створення tmux-сесії та запуск з додаванням PATH
-  tmux new-session -d -s "$SESSION_NAME" "export PATH=\"/root/.dria/bin:\$PATH\" && dkn-compute-launcher --profile $SESSION_NAME start"
+  # Створення tmux-сесії та запуск з PATH і коректним Ctrl+C
+  tmux new-session -d -s "$SESSION_NAME" "bash -c 'export PATH=\"/root/.dria/bin:\$PATH\" && exec dkn-compute-launcher --profile $SESSION_NAME start'"
   echo "Сесія $SESSION_NAME запущена в tmux."
 
   # Збільшуємо порт та індекс
