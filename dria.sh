@@ -83,7 +83,7 @@ Description=Dria Compute Node - $SESSION_NAME
 After=network.target
 
 [Service]
-EnvironmentFile="$ENV_PATH"
+EnvironmentFile=$ENV_PATH
 ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION_NAME start
 WorkingDirectory=/root
 User=root
