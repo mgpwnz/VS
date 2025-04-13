@@ -13,29 +13,34 @@ read -p "👤 Enter REMOTE_USER (usually 'driauser'): " REMOTE_USER
 REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 LOG_DIR="/var/log/dria"
 
-# === Optional SSH Key Generation (only on 127.0.0.1 aka main server) ===
+# === SSH Key Setup ===
+SSH_KEY_PATH="$HOME/.ssh/id_rsa"
+
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
-  echo "🔐 Checking for SSH key..."
-  if [[ ! -f ~/.ssh/id_rsa ]]; then
-    echo "📁 No SSH key found, generating..."
-    ssh-keygen -t rsa -b 4096 -C "dria-bot" -f ~/.ssh/id_rsa -N ""
-  fi
-  echo "✅ SSH key found: ~/.ssh/id_rsa.pub"
-  read -p "📋 Do you want to print your public key to connect other nodes? (y/n): " SHOW_KEY
-  if [[ "$SHOW_KEY" == "y" ]]; then
-    echo "----- COPY THIS PUBLIC KEY TO ALL OTHER NODES -----"
-    cat ~/.ssh/id_rsa.pub
-    echo "--------------------------------------------------"
+  echo "ℹ️ You are on the main server (bot)."
+  read -p "📥 Paste public key of a worker node to authorize access (leave empty to skip): " PUBKEY
+  if [[ -n "$PUBKEY" ]]; then
+    mkdir -p /home/$REMOTE_USER/.ssh
+    touch /home/$REMOTE_USER/.ssh/authorized_keys
+    chmod 700 /home/$REMOTE_USER/.ssh
+    chmod 600 /home/$REMOTE_USER/.ssh/authorized_keys
+    grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys || echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
+    chown -R $REMOTE_USER:$REMOTE_USER /home/$REMOTE_USER/.ssh
+    echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
+  else
+    echo "➡️ Skipping key addition."
   fi
 else
   echo "🔑 This is a worker node."
-  read -p "📥 Paste public key of main server here: " PUBKEY
-  mkdir -p ~/.ssh
-  touch ~/.ssh/authorized_keys
-  chmod 700 ~/.ssh
-  chmod 600 ~/.ssh/authorized_keys
-  grep -qxF "$PUBKEY" ~/.ssh/authorized_keys || echo "$PUBKEY" >> ~/.ssh/authorized_keys
-  echo "✅ Public key added to ~/.ssh/authorized_keys"
+  if [[ ! -f "$SSH_KEY_PATH" ]]; then
+    echo "📁 No SSH key found, generating..."
+    ssh-keygen -t rsa -b 4096 -C "$HOST_TAG" -f "$SSH_KEY_PATH" -N ""
+  fi
+  echo "✅ SSH key ready at $SSH_KEY_PATH"
+  echo "📋 Copy the following public key and add it to the main server's authorized_keys:"
+  echo "--------------------------------------------------"
+  cat "$SSH_KEY_PATH.pub"
+  echo "--------------------------------------------------"
 fi
 
 # === Create update_points.sh ===
@@ -76,6 +81,10 @@ echo "}" >> "\$TEMP_FILE"
 if [[ "\$REMOTE_HOST" == "127.0.0.1" || "\$REMOTE_HOST" == "localhost" ]]; then
   cp "\$TEMP_FILE" "\$REMOTE_DIR/\$HOST_TAG.json"
 else
+  if ! ssh -q -o BatchMode=yes -o ConnectTimeout=5 "\$REMOTE_USER@\$REMOTE_HOST" 'exit'; then
+    echo "❌ SSH connection to \$REMOTE_HOST failed"
+    exit 1
+  fi
   scp -q "\$TEMP_FILE" "\$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR/\$HOST_TAG.json"
 fi
 EOF
