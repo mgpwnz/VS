@@ -66,9 +66,9 @@ else
   fi
   echo "✅ SSH key ready at $SSH_KEY_PATH"
   echo -e "📋 ${GREEN}Copy the following public key and add it to the main server's authorized_keys:${RESET}"
-  echo -e "${GREEN}--------------------------------------------------"
-  cat "$SSH_KEY_PATH.pub" | sed "s/^/${GREEN}/"
-  echo -e "--------------------------------------------------${RESET}"
+  echo -e "${GREEN}--------------------------------------------------${RESET}"
+  cat "$SSH_KEY_PATH.pub"
+  echo -e "${GREEN}--------------------------------------------------${RESET}"
 fi
 
 # === Create update_points.sh ===
