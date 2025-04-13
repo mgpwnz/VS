@@ -42,7 +42,7 @@ echo "  \\"points\\": {" >> "\$TEMP_FILE"
 first=true
 for file in "\$LOG_DIR"/dria*.log; do
   node=\$(basename "\$file" .log)
-  value=\$(tac "\$file" | grep -m1 '\\\\\$DRIA Points:' | grep -oP '\\\\d+(?= total)' || echo -1)
+  value=\$(tac "\$file" | grep -m1 '\\\\\\$DRIA Points:' | grep -oP '\\\\d+(?= total)' || echo -1)
 
   if [ "\$first" = true ]; then
     first=false
