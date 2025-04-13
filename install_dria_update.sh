@@ -110,11 +110,11 @@ echo "}" >> "\$TEMP_FILE"
 if [[ "\$REMOTE_HOST" == "127.0.0.1" || "\$REMOTE_HOST" == "localhost" ]]; then
   cp "\$TEMP_FILE" "\$REMOTE_DIR/\$HOST_TAG.json"
 else
-  if ! ssh -q -o BatchMode=yes -o ConnectTimeout=5 "\$REMOTE_USER@\$REMOTE_HOST" 'exit'; then
+  if ! ssh -o StrictHostKeyChecking=no -q -o BatchMode=yes -o ConnectTimeout=5 "\$REMOTE_USER@\$REMOTE_HOST" 'exit'; then
     echo "❌ SSH connection to \$REMOTE_HOST failed"
     exit 1
   fi
-  scp -q "\$TEMP_FILE" "\$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR/\$HOST_TAG.json"
+  scp -o StrictHostKeyChecking=no -q "\$TEMP_FILE" "\$REMOTE_USER@\$REMOTE_HOST:\$REMOTE_DIR/\$HOST_TAG.json"
 fi
 EOF
 
