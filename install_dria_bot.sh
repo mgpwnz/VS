@@ -1,61 +1,78 @@
 #!/bin/bash
 
-echo "📦 Встановлення DRIA Telegram-бота..."
+set -e
 
-# 1. Параметри
+echo "📦 Installing DRIA Telegram Bot..."
+
+# === Configuration ===
 APP_DIR="/opt/dria_bot"
 ENV_FILE="$APP_DIR/.env"
 SERVICE_FILE="/etc/systemd/system/dria-bot.service"
 PYTHON_BIN="/usr/bin/python3"
+VENV_DIR="$APP_DIR/venv"
 
-# 2. Створення користувача
-echo "👤 Створюємо користувача 'driauser'..."
-id -u driauser &>/dev/null || adduser --disabled-password --gecos "" driauser
+# === Create user if needed ===
+if ! id "driauser" &>/dev/null; then
+  echo "👤 Creating system user 'driauser'..."
+  adduser --disabled-password --gecos "" driauser
+fi
 
-# 3. Створення директорій
+# === Prepare directories ===
 mkdir -p "$APP_DIR"
 mkdir -p "/home/driauser/dria_stats"
 chown -R driauser:driauser /home/driauser/dria_stats
 chmod 700 /home/driauser/dria_stats
 
-# 4. Запит налаштувань
-read -p "🔐 Введи Telegram BOT TOKEN: " BOT_TOKEN
-read -p "👤 Введи твій Telegram user ID: " TG_ID
+# === Read configuration ===
+read -p "🔐 Enter your Telegram BOT TOKEN: " BOT_TOKEN
+read -p "👤 Enter your Telegram user ID (AUTHORIZED_USER_ID): " TG_ID
 
-# 5. Збереження .env
+# === Write .env ===
 cat > "$ENV_FILE" <<EOF
 BOT_TOKEN=$BOT_TOKEN
 AUTHORIZED_USER_ID=$TG_ID
 STATS_DIR=/home/driauser/dria_stats
 EOF
 
-# 6. Встановлення Python та залежностей
-apt update
-apt install -y python3 python3-pip
-pip3 install python-telegram-bot python-dotenv
+chown driauser:driauser "$ENV_FILE"
+chmod 600 "$ENV_FILE"
 
-# 7. Завантаження коду бота
+# === Setup virtual environment ===
+echo "🐍 Setting up Python venv..."
+apt update && apt install -y python3 python3-venv
+cd "$APP_DIR"
+$PYTHON_BIN -m venv venv
+source "$VENV_DIR/bin/activate"
+pip install --upgrade pip
+pip install python-telegram-bot python-dotenv
+
+# === Write dria_bot.py with auto-emoji switch ===
 cat > "$APP_DIR/dria_bot.py" <<'EOF'
 # -*- coding: utf-8 -*-
 import os
 import json
+import locale
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# === Load .env config ===
+# === Load config ===
 load_dotenv(".env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 AUTHORIZED_USER_ID = int(os.getenv("AUTHORIZED_USER_ID"))
 STATS_DIR = os.getenv("STATS_DIR", "/home/driauser/dria_stats")
 DATA_TIMEOUT_MINUTES = 10
 
-# === Access control ===
+# === Emoji switch ===
+LANG = os.environ.get("LANG", "")
+use_emoji = not LANG.startswith("C")  # disable emojis in minimal locales
+
+# === Check user ===
 def is_authorized(user_id):
     return user_id == AUTHORIZED_USER_ID
 
-# === Load all .json stats ===
+# === Load JSON data ===
 def load_stats():
     data = {}
     for file in os.listdir(STATS_DIR):
@@ -75,7 +92,7 @@ def load_stats():
             continue
     return data
 
-# === Format message for Telegram ===
+# === Format output ===
 def format_stats(stats):
     lines = []
     now = datetime.now(timezone.utc)
@@ -85,21 +102,23 @@ def format_stats(stats):
         try:
             ts = datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             age_minutes = (now - ts).total_seconds() / 60
-            status_emoji = "✅" if age_minutes <= DATA_TIMEOUT_MINUTES else "⚠️"
+            status = "✅" if use_emoji and age_minutes <= DATA_TIMEOUT_MINUTES else (
+                     "⚠️" if use_emoji else "[STALE]")
             ts_display = ts.strftime("%Y-%m-%d %H:%M UTC")
         except Exception:
             ts_display = "UNKNOWN"
-            status_emoji = "⚠️"
+            status = "⚠️" if use_emoji else "[STALE]"
 
-        lines.append(f"🖥 *{hostname}* ({ts_display}) {status_emoji}")
+        prefix = "🖥" if use_emoji else "[Server]"
+        lines.append(f"{prefix} *{hostname}* ({ts_display}) {status}")
         for node, pts in sorted(stats[hostname]["points"].items()):
             if pts >= 0:
                 lines.append(f"  └ {node}: *{pts}* Points")
             else:
-                lines.append(f"  └ {node}: ❌ Error")
+                lines.append(f"  └ {node}: ❌ Error" if use_emoji else f"  └ {node}: Error")
     return "\n".join(lines) or "No data found."
 
-# === /start command ===
+# === Bot handlers ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update.effective_user.id):
         await update.message.reply_text("⛔️ Access denied.")
@@ -109,7 +128,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ])
     await update.message.reply_text("Click the button below:", reply_markup=keyboard)
 
-# === Handle button click ===
 async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not is_authorized(query.from_user.id):
@@ -119,19 +137,20 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stats = load_stats()
     await query.edit_message_text(format_stats(stats), parse_mode="Markdown")
 
-# === Start bot ===
+# === Start ===
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_button, pattern="get_points"))
     print("✅ Bot is running")
     app.run_polling()
-
 EOF
 
 chown -R driauser:driauser "$APP_DIR"
 
-# 8. Створення systemd сервісу
+# === Create systemd service ===
+echo "🔧 Creating systemd service..."
+
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=DRIA Telegram Bot
@@ -139,7 +158,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=$APP_DIR
-ExecStart=$PYTHON_BIN dria_bot.py
+ExecStart=$APP_DIR/venv/bin/python dria_bot.py
 Restart=always
 User=driauser
 EnvironmentFile=$ENV_FILE
@@ -148,10 +167,10 @@ EnvironmentFile=$ENV_FILE
 WantedBy=multi-user.target
 EOF
 
-# 9. Активуємо
-systemctl daemon-reexec
+# === Start bot ===
+echo "🚀 Starting bot with systemd..."
 systemctl daemon-reload
 systemctl enable --now dria-bot.service
 
-echo "✅ Telegram бот встановлено та запущено!"
-echo "ℹ️ Перевірити лог: journalctl -u dria-bot.service -f"
+echo "✅ Bot installed and running!"
+echo "📟 Check logs: journalctl -u dria-bot.service -f"
