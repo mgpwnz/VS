@@ -6,6 +6,8 @@ set -e
 SCRIPT_PATH="/root/update_points.sh"
 SERVICE_FILE="/etc/systemd/system/dria-update.service"
 TIMER_FILE="/etc/systemd/system/dria-update.timer"
+GREEN="\033[1;32m"
+RESET="\033[0m"
 
 read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
 read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
@@ -42,10 +44,10 @@ else
     ssh-keygen -t rsa -b 4096 -C "$HOST_TAG" -f "$SSH_KEY_PATH" -N ""
   fi
   echo "✅ SSH key ready at $SSH_KEY_PATH"
-  echo "📋 Copy the following public key and add it to the main server's authorized_keys:"
-  echo "--------------------------------------------------"
-  cat "$SSH_KEY_PATH.pub"
-  echo "--------------------------------------------------"
+  echo -e "📋 ${GREEN}Copy the following public key and add it to the main server's authorized_keys:${RESET}"
+  echo -e "${GREEN}--------------------------------------------------"
+  cat "$SSH_KEY_PATH.pub" | sed "s/^/${GREEN}/"
+  echo -e "--------------------------------------------------${RESET}"
 fi
 
 # === Create update_points.sh ===
