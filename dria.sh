@@ -1,33 +1,30 @@
 #!/bin/bash
 
-# Ввід спільного GEMINI API ключа
 read -p "Введи GEMINI API ключ: " API
 
-# Список доступних моделей
 MODELS_LIST=(
   "gemini-2.0-flash"
   "gemini-1.5-flash"
 )
 
-# Початковий порт
-PORT=4002
-INDEX=2
+PORT=4001
+INDEX=1
 
-# Каталог конфігурацій
 CONFIG_DIR="/root/.dria/dkn-compute-launcher"
-mkdir -p "$CONFIG_DIR"
+LOG_DIR="/var/log/dria"
+mkdir -p "$CONFIG_DIR" "$LOG_DIR"
 
-# Функція для перевірки, чи порт вільний
 is_port_available() {
   ! lsof -iTCP:$1 -sTCP:LISTEN >/dev/null
 }
+
+RELOAD_NEEDED=false
 
 while true; do
   echo ""
   read -p "Введи приватний ключ (або залиш порожнім для виходу): " PRIVATEKEY
   [[ -z "$PRIVATEKEY" ]] && echo "Вихід." && break
 
-  # Знаходимо вільний порт
   while ! is_port_available $PORT; do
     echo "Порт $PORT зайнятий, шукаємо далі..."
     PORT=$((PORT + 1))
@@ -37,8 +34,8 @@ while true; do
   SESSION_NAME="dria$INDEX"
   ENV_PATH="$CONFIG_DIR/.env.$SESSION_NAME"
   SERVICE_PATH="/etc/systemd/system/$SESSION_NAME.service"
+  LOG_PATH="$LOG_DIR/$SESSION_NAME.log"
 
-  # Якщо сервіс вже існує — пропускаємо
   if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service"; then
     echo "Сервіс $SESSION_NAME вже існує. Пропускаємо..."
     PORT=$((PORT + 1))
@@ -46,11 +43,9 @@ while true; do
     continue
   fi
 
-  # Вибираємо випадкові моделі
   COUNT=$((RANDOM % 3 + 1))
   SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
 
-  # Генерація .env файлу
   cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
@@ -82,34 +77,39 @@ EOF
 
   echo "✅ Збережено: $ENV_PATH"
 
-  # Генерація systemd-сервісу
   cat > "$SERVICE_PATH" <<EOF
 [Unit]
 Description=Dria Compute Node - $SESSION_NAME
 After=network.target
 
 [Service]
-EnvironmentFile=$ENV_PATH
+EnvironmentFile="$ENV_PATH"
 ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION_NAME start
+WorkingDirectory=/root
+User=root
 Restart=on-failure
 RestartSec=5
-User=root
-WorkingDirectory=/root
+StandardOutput=append:$LOG_PATH
+StandardError=append:$LOG_PATH
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
   echo "✅ Створено systemd сервіс: $SERVICE_PATH"
+  RELOAD_NEEDED=true
 
-  # Перезавантажуємо systemd та запускаємо сервіс
-  systemctl daemon-reload
-  systemctl enable --now "$SESSION_NAME.service"
-
-  echo "🚀 Сервіс $SESSION_NAME запущено (порт $PORT, моделі: $SELECTED_MODELS)"
-
-  # Переходимо до наступного
   PORT=$((PORT + 1))
   INDEX=$((INDEX + 1))
 done
 
+if $RELOAD_NEEDED; then
+  echo "🔄 Оновлюємо systemd..."
+  systemctl daemon-reexec
+  systemctl daemon-reload
+  systemctl list-units --type=service | grep dria
+  read -p "Хочеш запустити всі створені сервіси зараз? [y/N]: " START_ALL
+  if [[ "$START_ALL" =~ ^[Yy]$ ]]; then
+    systemctl list-unit-files | grep dria | awk '{print $1}' | xargs -I {} systemctl enable --now {}
+  fi
+fi
