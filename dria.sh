@@ -5,13 +5,8 @@ read -p "Введи GEMINI API ключ: " API
 
 # Список доступних моделей
 MODELS_LIST=(
-  "gemini-2.0-pro-exp-02-05"
   "gemini-2.0-flash"
-  "gemini-1.5-pro-exp-0827"
-  "gemini-1.5-pro"
   "gemini-1.5-flash"
-  "gemini-1.0-pro"
-  "gemma-2-2b-it"
 )
 
 # Початковий порт
