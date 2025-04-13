@@ -2,10 +2,7 @@
 
 read -p "Введи GEMINI API ключ: " API
 
-MODELS_LIST=(
-  "gemini-2.0-flash"
-  "gemini-1.5-flash"
-)
+MODELS_LIST="gemini-2.0-flash,gemini-1.5-flash"
 
 PORT=4001
 INDEX=1
@@ -36,7 +33,6 @@ while true; do
   SERVICE_PATH="/etc/systemd/system/$SESSION_NAME.service"
   LOG_PATH="$LOG_DIR/$SESSION_NAME.log"
 
-  # Якщо сервіс вже існує — пропускаємо
   if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service"; then
     echo "⚠️  Сервіс $SESSION_NAME вже існує. Пропускаємо..."
     PORT=$((PORT + 1))
@@ -44,11 +40,10 @@ while true; do
     continue
   fi
 
-  # Якщо .env файл вже існує
   if [[ -f "$ENV_PATH" ]]; then
     echo "⚠️  Конфігурація $ENV_PATH вже існує."
     read -p "Вибери дію: (O)verwrite / (U)se existing / (S)kip [O/U/S]: " ACTION
-    ACTION=${ACTION^^}  # upper case
+    ACTION=${ACTION^^}
     if [[ "$ACTION" == "S" ]]; then
       echo "⏭ Пропущено $SESSION_NAME"
       PORT=$((PORT + 1))
@@ -58,13 +53,10 @@ while true; do
       echo "✅ Використано існуючий .env"
     else
       echo "🔁 Перезаписуємо конфігурацію..."
-      COUNT=$((RANDOM % 3 + 1))
-      SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
-
       cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
-DKN_MODELS=$SELECTED_MODELS
+DKN_MODELS=$MODELS_LIST
 DKN_P2P_LISTEN_ADDR=/ip4/0.0.0.0/tcp/$PORT
 DKN_RELAY_NODES=
 DKN_BOOTSTRAP_NODES=
@@ -91,14 +83,10 @@ RUST_LOG=none
 EOF
     fi
   else
-    # Якщо файлу немає — створюємо новий
-    COUNT=$((RANDOM % 3 + 1))
-    SELECTED_MODELS=$(shuf -e "${MODELS_LIST[@]}" -n "$COUNT" | paste -sd "," -)
-
     cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
-DKN_MODELS=$SELECTED_MODELS
+DKN_MODELS=$MODELS_LIST
 DKN_P2P_LISTEN_ADDR=/ip4/0.0.0.0/tcp/$PORT
 DKN_RELAY_NODES=
 DKN_BOOTSTRAP_NODES=
