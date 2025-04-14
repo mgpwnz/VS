@@ -1,7 +1,5 @@
 #!/bin/bash
 
-read -p "Введи GEMINI API ключ: " API
-
 MODELS_LIST="gemini-2.0-flash,gemini-1.5-flash"
 
 PORT=4001
@@ -21,6 +19,8 @@ while true; do
   echo ""
   read -p "Введи приватний ключ (або залиш порожнім для виходу): " PRIVATEKEY
   [[ -z "$PRIVATEKEY" ]] && echo "Вихід." && break
+
+  read -p "Введи GEMINI API ключ: " API
 
   while ! is_port_available $PORT; do
     echo "Порт $PORT зайнятий, шукаємо далі..."
