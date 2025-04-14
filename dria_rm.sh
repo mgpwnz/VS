@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo "🛑 Зупиняємо всі dria сервіси..."
-systemctl list-units --type=service | grep dria | awk '{print $1}' | xargs -I {} systemctl stop {}
+echo "🛑 Зупиняємо тільки dria1, dria2... сервіси..."
+systemctl list-units --type=service | grep -oE '^dria[0-9]+\.service' | xargs -r -I {} systemctl stop {}
 
 echo "❌ Вимикаємо з автозапуску..."
-systemctl list-unit-files | grep dria | awk '{print $1}' | xargs -I {} systemctl disable {}
+systemctl list-unit-files | grep -oE '^dria[0-9]+\.service' | xargs -r -I {} systemctl disable {}
 
 echo "🗑 Видаляємо .service файли..."
-find /etc/systemd/system/ -name "dria*.service" -exec rm -f {} \;
+find /etc/systemd/system/ -regextype posix-extended -regex '.*/dria[0-9]+\.service' -exec rm -f {} \;
 
 echo "🧹 Перезавантаження systemd..."
 systemctl daemon-reload
