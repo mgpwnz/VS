@@ -46,7 +46,7 @@ source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
 pip install python-telegram-bot python-dotenv
 
-# === Write dria_bot.py with auto-emoji switch ===
+# === Write dria_bot.py with total points ===
 cat > "$APP_DIR/dria_bot.py" <<'EOF'
 # -*- coding: utf-8 -*-
 import os
@@ -66,7 +66,7 @@ DATA_TIMEOUT_MINUTES = 10
 
 # === Emoji switch ===
 LANG = os.environ.get("LANG", "")
-use_emoji = not LANG.startswith("C")  # disable emojis in minimal locales
+use_emoji = not LANG.startswith("C")
 
 # === Check user ===
 def is_authorized(user_id):
@@ -96,6 +96,7 @@ def load_stats():
 def format_stats(stats):
     lines = []
     now = datetime.now(timezone.utc)
+    total_points = 0
 
     for hostname in sorted(stats):
         ts_str = stats[hostname].get("timestamp", "")
@@ -113,9 +114,15 @@ def format_stats(stats):
         lines.append(f"{prefix} *{hostname}* ({ts_display}) {status}")
         for node, pts in sorted(stats[hostname]["points"].items()):
             if pts >= 0:
+                total_points += pts
                 lines.append(f"  └ {node}: *{pts}* Points")
             else:
                 lines.append(f"  └ {node}: ❌ Error" if use_emoji else f"  └ {node}: Error")
+
+    lines.append("")
+    total_line = f"📈 *Total Points:* *{total_points}*" if use_emoji else f"[Total Points]: {total_points}"
+    lines.append(total_line)
+
     return "\n".join(lines) or "No data found."
 
 # === Bot handlers ===
