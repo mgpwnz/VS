@@ -49,7 +49,7 @@ source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
 pip install python-telegram-bot python-dotenv
 
-# === Write dria_bot.py with total points ===
+# === Write dria_bot.py ===
 cat > "$APP_DIR/dria_bot.py" <<'EOF'
 # -*- coding: utf-8 -*-
 import os
@@ -95,7 +95,7 @@ def load_stats():
             continue
     return data
 
-# === Format output ===
+# === Format output with Total Points ===
 def format_stats(stats):
     lines = []
     now = datetime.now(timezone.utc)
@@ -122,9 +122,10 @@ def format_stats(stats):
             else:
                 lines.append(f"  └ {node}: ❌ Error" if use_emoji else f"  └ {node}: Error")
 
-    lines.append("")
-    total_line = f"📈 *Total Points:* *{total_points}*" if use_emoji else f"[Total Points]: {total_points}"
-    lines.append(total_line)
+    if total_points > 0:
+        lines.append("")
+        total_line = f"📈 *Total Points:* *{total_points}*" if use_emoji else f"[Total Points]: {total_points}"
+        lines.append(total_line)
 
     return "\n".join(lines) or "No data found."
 
