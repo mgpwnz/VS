@@ -23,19 +23,22 @@ mkdir -p "/home/driauser/dria_stats"
 chown -R driauser:driauser /home/driauser/dria_stats
 chmod 700 /home/driauser/dria_stats
 
-# === Read configuration ===
-read -p "🔐 Enter your Telegram BOT TOKEN: " BOT_TOKEN
-read -p "👤 Enter your Telegram user ID (AUTHORIZED_USER_ID): " TG_ID
+# === Check or create .env ===
+if [[ -f "$ENV_FILE" ]]; then
+  echo "📄 .env file already exists. Skipping token input."
+else
+  read -p "🔐 Enter your Telegram BOT TOKEN: " BOT_TOKEN
+  read -p "👤 Enter your Telegram user ID (AUTHORIZED_USER_ID): " TG_ID
 
-# === Write .env ===
-cat > "$ENV_FILE" <<EOF
+  cat > "$ENV_FILE" <<EOF
 BOT_TOKEN=$BOT_TOKEN
 AUTHORIZED_USER_ID=$TG_ID
 STATS_DIR=/home/driauser/dria_stats
 EOF
 
-chown driauser:driauser "$ENV_FILE"
-chmod 600 "$ENV_FILE"
+  chown driauser:driauser "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+fi
 
 # === Setup virtual environment ===
 echo "🐍 Setting up Python venv..."
