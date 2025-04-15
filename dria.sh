@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODELS_LIST="gemini-2.0-flash,gemini-1.5-flash"
+MODELS_LIST="gemini-2.0-flash"
 
 PORT=4001
 INDEX=1
