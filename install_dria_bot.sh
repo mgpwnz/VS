@@ -97,35 +97,45 @@ def load_stats():
 
 # === Format output with Total Points ===
 def format_stats(stats):
+    """
+    Summarize DRIA points per server without listing every node,
+    to avoid too-long messages.
+    """
     lines = []
     now = datetime.now(timezone.utc)
     total_points = 0
+    total_nodes = 0
 
+    # Iterate over each server hostname
     for hostname in sorted(stats):
-        ts_str = stats[hostname].get("timestamp", "")
+        host_data = stats[hostname]
+        pts_dict = host_data.get("points", {})
+
+        # Count how many nodes reported data
+        node_count = len(pts_dict)
+
+        # Sum only non-negative point values
+        host_sum = sum(v for v in pts_dict.values() if isinstance(v, (int, float)) and v >= 0)
+        total_points += host_sum
+        total_nodes += node_count
+
+        # Parse timestamp and compute “freshness”
+        ts_str = host_data.get("timestamp", "")
         try:
             ts = datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             age_minutes = (now - ts).total_seconds() / 60
-            status = "✅" if use_emoji and age_minutes <= DATA_TIMEOUT_MINUTES else (
-                     "⚠️" if use_emoji else "[STALE]")
+            status = "✅" if age_minutes <= DATA_TIMEOUT_MINUTES else "⚠️"
             ts_display = ts.strftime("%Y-%m-%d %H:%M UTC")
         except Exception:
+            status = "⚠️"
             ts_display = "UNKNOWN"
-            status = "⚠️" if use_emoji else "[STALE]"
 
-        prefix = "🖥" if use_emoji else "[Server]"
-        lines.append(f"{prefix} *{hostname}* ({ts_display}) {status}")
-        for node, pts in sorted(stats[hostname]["points"].items()):
-            if pts >= 0:
-                total_points += pts
-                lines.append(f"  └ {node}: *{pts}* Points")
-            else:
-                lines.append(f"  └ {node}: ❌ Error" if use_emoji else f"  └ {node}: Error")
+        # Build one line per server: hostname, node count, sum, timestamp, status
+        lines.append(f"🖥 *{hostname}* — {node_count} nodes, {host_sum} points ({ts_display}) {status}")
 
-    if total_points > 0:
-        lines.append("")
-        total_line = f"📈 *Total Points:* *{total_points}*" if use_emoji else f"[Total Points]: {total_points}"
-        lines.append(total_line)
+    # Add a blank line and then overall totals
+    lines.append("")
+    lines.append(f"📊 *Servers:* {len(stats)}, *Total Nodes:* {total_nodes}, *Total Points:* *{total_points}*")
 
     return "\n".join(lines) or "No data found."
 
