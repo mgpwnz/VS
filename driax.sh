@@ -75,7 +75,7 @@ TOTAL_KEYS=${#PRIVATE_KEYS[@]}
 INDEX=1
 
 while (( INDEX <= TOTAL_KEYS )); do
-  SESSION="dria$INDEX"
+  SESSION="dria${INDEX}"
   ENV_PATH="$CONFIG_DIR/.env.$SESSION"
   SERVICE_PATH="/etc/systemd/system/$SESSION.service"
   LOG_PATH="$LOG_DIR/$SESSION.log"
@@ -115,20 +115,20 @@ EOF
   if [[ -f "$SERVICE_PATH" ]]; then
     echo "⚠️  Service exists: $SERVICE_PATH. Skipping unit creation."
   else
-    cat > "$SERVICE_PATH" <<'EOF'
+    cat > "$SERVICE_PATH" <<EOF
 [Unit]
-Description=Dria Compute Node - ${SESSION}
+Description=Dria Compute Node - $SESSION
 After=network.target
 
 [Service]
-EnvironmentFile=${ENV_PATH}
-ExecStart=/root/.dria/bin/dkn-compute-launcher --profile ${SESSION} start
+EnvironmentFile=$ENV_PATH
+ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION start
 WorkingDirectory=/root
 User=root
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:${LOG_PATH}
-StandardError=append:${LOG_PATH}
+StandardOutput=append:$LOG_PATH
+StandardError=append:$LOG_PATH
 
 [Install]
 WantedBy=multi-user.target
@@ -155,3 +155,4 @@ if $RELOAD_NEEDED; then
 fi
 
 echo "✅ Done."
+echo "🔄 Reloading systemd"
