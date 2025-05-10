@@ -129,7 +129,6 @@ Description=Dria Compute Node - $SESSION_NAME
 After=network.target
 
 [Service]
-Type=forking
 EnvironmentFile=$ENV_PATH
 ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION_NAME start
 WorkingDirectory=/root
