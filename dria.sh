@@ -20,18 +20,18 @@ while true; do
   SERVICE_PATH="/etc/systemd/system/$SESSION_NAME.service"
   LOG_PATH="$LOG_DIR/$SESSION_NAME.log"
 
-  # 1) Якщо вже є і сервіс, і .env → пропускаємо цю сесію
-  if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service" && [[ -f "$ENV_PATH" ]]; then
+  # Пропуск, якщо є і .service, і .env
+  if [[ -f "$SERVICE_PATH" && -f "$ENV_PATH" ]]; then
     echo "⚠️  Сервіс $SESSION_NAME та конфігурація $ENV_PATH вже існують. Пропускаємо..."
     PORT=$((PORT + 1))
     INDEX=$((INDEX + 1))
     continue
   fi
 
-  # 2) Якщо .env існує, пропонуємо дії
+  # Якщо існує .env, пропонуємо дії
   if [[ -f "$ENV_PATH" ]]; then
-    echo "⚠️  Конфігурація $ENV_PATH вже існує."
-    read -p "Вибери дію: (O)verwrite / (U)se existing / (S)kip [O/U/S]: " ACTION
+    echo "⚠️  Конфігурація $ENV_PATH існує."
+    read -p "Виберіть дію: (O)verwrite / (U)se existing / (S)kip [O/U/S]: " ACTION
     ACTION=${ACTION^^}
     case "$ACTION" in
       S)
@@ -42,12 +42,12 @@ while true; do
         ;;
       U)
         echo "✅ Використано існуючий .env"
-        CONFIGURED=true
+        CONFIGURED=false
         ;;
       O)
         echo "🔁 Перезаписуємо конфігурацію..."
-        read -p "Введи приватний ключ: " PRIVATEKEY
-        read -p "Введи GEMINI API ключ: " API
+        read -p "Введіть приватний ключ: " PRIVATEKEY
+        read -p "Введіть GEMINI API ключ: " API
         CONFIGURED=true
         ;;
       *)
@@ -58,7 +58,7 @@ while true; do
         ;;
     esac
   else
-    # 3) Якщо .env немає — збираємо дані для нової конфігурації
+    # Створення нового .env
     echo
     read -p "Введи приватний ключ (або пустий для виходу): " PRIVATEKEY
     [[ -z "$PRIVATEKEY" ]] && echo "Вихід." && break
@@ -66,10 +66,11 @@ while true; do
     CONFIGURED=true
   fi
 
-  # 4) Підбираємо вільний порт (якщо ми щойно ввели дані)
+  # Якщо потрібна нова або оновлена конфігурація
   if [[ "$CONFIGURED" == true ]]; then
-    while ! is_port_available $PORT; do
-      echo "Порт $PORT зайнятий — пробуємо $((PORT+1))"
+    # Знаходимо вільний порт
+    while ! is_port_available "$PORT"; do
+      echo "Порт $PORT зайнятий — пробуємо $((PORT + 1))"
       PORT=$((PORT + 1))
       INDEX=$((INDEX + 1))
       SESSION_NAME="dria$INDEX"
@@ -78,7 +79,7 @@ while true; do
       LOG_PATH="$LOG_DIR/$SESSION_NAME.log"
     done
 
-    # 5) Записуємо або перезаписуємо .env
+    # Записуємо .env
     cat > "$ENV_PATH" <<EOF
 ## DRIA ##
 DKN_WALLET_SECRET_KEY=$PRIVATEKEY
@@ -107,17 +108,19 @@ JINA_API_KEY=
 ## Log levels
 RUST_LOG=none
 EOF
+
     echo "✅ Конфігурація записана: $ENV_PATH"
   fi
 
-  # 6) Створюємо або оновлюємо сервіс
-  if systemctl list-units --type=service --all | grep -q "$SESSION_NAME.service"; then
+  # Створення або оновлення сервісу
+  if [[ -f "$SERVICE_PATH" ]]; then
     if [[ "$CONFIGURED" == true ]]; then
       echo "🔄 Оновлюємо сервіс $SESSION_NAME"
       systemctl daemon-reload
       systemctl restart "$SESSION_NAME"
+      echo "✅ Сервіс $SESSION_NAME перезапущено"
     else
-      echo "⏭ Сервіс $SESSION_NAME існує, змін не потрібно"
+      echo "⏭ Сервіс $SESSION_NAME існує, без змін"
     fi
   else
     cat > "$SERVICE_PATH" <<EOF
@@ -138,17 +141,18 @@ StandardError=append:$LOG_PATH
 [Install]
 WantedBy=multi-user.target
 EOF
+
     echo "✅ Сервіс створено: $SERVICE_PATH"
     RELOAD_NEEDED=true
   fi
 
-  # Готуємося до наступної ітерації
+  # Підготовка до наступної ітерації
   PORT=$((PORT + 1))
   INDEX=$((INDEX + 1))
   unset CONFIGURED
 done
 
-# 7) Завантажуємо нові юніти лише один раз після циклу
+# Після циклу: завантаження нових сервісів
 if $RELOAD_NEEDED; then
   echo "🔄 Оновлення systemd..."
   systemctl daemon-reexec
@@ -159,5 +163,5 @@ if $RELOAD_NEEDED; then
     systemctl list-unit-files | grep dria | awk '{print $1}' | xargs -I {} systemctl enable --now {}
   fi
 fi
-echo "✅ Готово. Всі сесії:"
-systemctl list-units --type=service | grep dria
+echo "✅ Готово."
+echo "🔄 Перезавантаження systemd..."
