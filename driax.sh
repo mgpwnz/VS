@@ -111,24 +111,24 @@ EOF
     echo "✅ Written config: $ENV_PATH"
   fi
 
-  # Create service if missing
+  # Create systemd service if missing
   if [[ -f "$SERVICE_PATH" ]]; then
     echo "⚠️  Service exists: $SERVICE_PATH. Skipping unit creation."
   else
-    cat > "$SERVICE_PATH" <<EOF
+    cat > "$SERVICE_PATH" <<'EOF'
 [Unit]
-Description=Dria Compute Node - $SESSION
+Description=Dria Compute Node - ${SESSION}
 After=network.target
 
 [Service]
-EnvironmentFile=$ENV_PATH
-ExecStart=/root/.dria/bin/dkn-compute-launcher --profile $SESSION start
+EnvironmentFile=${ENV_PATH}
+ExecStart=/root/.dria/bin/dkn-compute-launcher --profile ${SESSION} start
 WorkingDirectory=/root
 User=root
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:$LOG_PATH
-StandardError=append:$LOG_PATH
+StandardOutput=append:${LOG_PATH}
+StandardError=append:${LOG_PATH}
 
 [Install]
 WantedBy=multi-user.target
@@ -147,9 +147,10 @@ if $RELOAD_NEEDED; then
   systemctl daemon-reexec
   systemctl daemon-reload
   systemctl list-units --type=service | grep dria
+
   read -rp "Start all new services now? [y/N]: " START
   if [[ "$START" =~ ^[Yy]$ ]]; then
-    systemctl list-unit-files | grep dria | awk '{print \$1}' | xargs -r systemctl enable --now
+    systemctl list-unit-files | grep dria | awk '{print $1}' | xargs -r systemctl enable --now
   fi
 fi
 
