@@ -123,11 +123,11 @@ EOF
 
 cat > "$TIMER_FILE" <<EOF
 [Unit]
-Description=Run update_points every 3 minutes
+Description=Run update_points every 10 minutes
 
 [Timer]
 OnBootSec=1min
-OnUnitActiveSec=3min
+OnUnitActiveSec=10min
 Unit=dria-update.service
 
 [Install]
