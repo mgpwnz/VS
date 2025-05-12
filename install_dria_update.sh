@@ -6,28 +6,28 @@ set -euo pipefail
 SCRIPT_PATH="/root/update_points.sh"
 SERVICE_FILE="/etc/systemd/system/dria-update.service"
 TIMER_FILE="/etc/systemd/system/dria-update.timer"
+ENV_FILE="/root/.dria_env"
 GREEN="\033[1;32m"
 RESET="\033[0m"
-ENV_FILE="/root/.dria_env"
 
-# Load configuration from .env if it exists
+# Load saved settings if they exist
 if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
 fi
 
-# Prompt for HOST_TAG and REMOTE_HOST if not set; default REMOTE_USER to 'driauser'
-if [[ -z "$HOST_TAG" ]]; then
+# Prompt for HOST_TAG and REMOTE_HOST if unset; default REMOTE_USER to 'driauser'
+if [[ -z "${HOST_TAG:-}" ]]; then
   read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
 fi
-if [[ -z "$REMOTE_HOST" ]]; then
+if [[ -z "${REMOTE_HOST:-}" ]]; then
   read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
 fi
-if [[ -z "$REMOTE_USER" ]]; then
+if [[ -z "${REMOTE_USER:-}" ]]; then
   REMOTE_USER="driauser"
   echo "👤 Using default REMOTE_USER: $REMOTE_USER"
 fi
 
-# Save variables to .env for future runs
+# Save settings for future runs
 cat > "$ENV_FILE" <<EOF
 HOST_TAG="$HOST_TAG"
 REMOTE_HOST="$REMOTE_HOST"
@@ -37,9 +37,8 @@ EOF
 # Directories
 REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 CONFIG_DIR="/root/.dria/dkn-compute-launcher"
-TEMP_FILE="/tmp/${HOST_TAG}.json"
 
-# SSH Key Setup
+# === SSH KEY SETUP ===
 SSH_KEY_PATH="$HOME/.ssh/id_rsa"
 
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
@@ -47,10 +46,12 @@ if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
   while true; do
     read -p "📥 Paste public key of a worker node to authorize access (or leave empty to stop): " PUBKEY
     [[ -z "$PUBKEY" ]] && break
+
     mkdir -p /home/$REMOTE_USER/.ssh
     touch /home/$REMOTE_USER/.ssh/authorized_keys
     chmod 700 /home/$REMOTE_USER/.ssh
     chmod 600 /home/$REMOTE_USER/.ssh/authorized_keys
+
     if grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys; then
       echo "⚠️ This key already exists. Skipping."
     else
@@ -73,19 +74,17 @@ else
   echo -e "${GREEN}--------------------------------------------------${RESET}"
 fi
 
-# Create update_points.sh
+# === CREATE update_points.sh ===
 echo "📝 Creating $SCRIPT_PATH..."
 cat > "$SCRIPT_PATH" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
 # === DEFAULT CONFIGURATION ===
-# You can set HOST_TAG, REMOTE_HOST, REMOTE_USER in /root/.dria_env,
-# otherwise the script will prompt on first run.
 ENV_FILE="/root/.dria_env"
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 
-# Prompt for variables if not set; default REMOTE_USER to 'driauser'
+# Prompt for required variables if unset; default REMOTE_USER to 'driauser'
 if [[ -z "${HOST_TAG:-}" ]]; then
   read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
 fi
@@ -97,20 +96,19 @@ if [[ -z "${REMOTE_USER:-}" ]]; then
   echo "👤 Using default REMOTE_USER: $REMOTE_USER"
 fi
 
-# Save variables back to .env
+# Save back to .env
 cat > "$ENV_FILE" <<E2
 HOST_TAG="$HOST_TAG"
 REMOTE_HOST="$REMOTE_HOST"
 REMOTE_USER="$REMOTE_USER"
 E2
 
-# Directories
 REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 CONFIG_DIR="/root/.dria/dkn-compute-launcher"
 TEMP_FILE="/tmp/${HOST_TAG}.json"
-
-# Start building JSON
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Start JSON
 {
   echo "{"
   echo "  \"hostname\": \"$HOST_TAG\","
@@ -120,7 +118,7 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 first=true
 
-# Gather all profiles from .env.dria* files
+# Gather profiles from .env.dria* files
 for envfile in "$CONFIG_DIR"/.env.dria*; do
   [[ -f "$envfile" ]] || continue
   filename=$(basename "$envfile")
@@ -132,32 +130,33 @@ for envfile in "$CONFIG_DIR"/.env.dria*; do
     echo "," >> "$TEMP_FILE"
   fi
 
-  # Call the command and parse the number before " $DRIA"
+  # Fetch points count
   pts=$(dkn-compute-launcher -p "$profile" points 2>&1 \
-        | grep -oP '\\d+(?= \\\$DRIA)' \
+        | grep -oP '\d+(?= \$DRIA)' \
         || echo "-1")
 
   echo -n "    \"$profile\": $pts" >> "$TEMP_FILE"
 done
 
-# Close JSON object
+# Close JSON
 {
   echo ""
   echo "  }"
   echo "}"
 } >> "$TEMP_FILE"
 
-# Send file to bot server
+# Send to bot server
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
   cp "$TEMP_FILE" "$REMOTE_DIR/$HOST_TAG.json"
 else
-  scp -o StrictHostKeyChecking=no -q "$TEMP_FILE" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$HOST_TAG.json"
+  scp -o StrictHostKeyChecking=no -q "$TEMP_FILE" \
+      "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$HOST_TAG.json"
 fi
 EOF
 
 chmod +x "$SCRIPT_PATH"
 
-# Create systemd service & timer
+# === CREATE systemd SERVICE & TIMER ===
 echo "🛠 Creating systemd service & timer..."
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
