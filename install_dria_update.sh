@@ -12,20 +12,19 @@ RESET="\033[0m"
 
 # Load saved settings if they exist
 if [[ -f "$ENV_FILE" ]]; then
-  source "$ENV_FILE"
+    source "$ENV_FILE"
 fi
 
-# Prompt for HOST_TAG and REMOTE_HOST if unset; default REMOTE_USER to 'driauser'
+# Prompt for HOST_TAG and REMOTE_HOST if unset
 if [[ -z "${HOST_TAG:-}" ]]; then
-  read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
+    read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
 fi
 if [[ -z "${REMOTE_HOST:-}" ]]; then
-  read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
+    read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
 fi
-if [[ -z "${REMOTE_USER:-}" ]]; then
-  REMOTE_USER="driauser"
-  echo "👤 Using default REMOTE_USER: $REMOTE_USER"
-fi
+# Default REMOTE_USER to 'driauser'
+REMOTE_USER="${REMOTE_USER:-driauser}"
+echo "👤 Using REMOTE_USER: $REMOTE_USER"
 
 # Save settings for future runs
 cat > "$ENV_FILE" <<EOF
@@ -42,36 +41,35 @@ CONFIG_DIR="/root/.dria/dkn-compute-launcher"
 SSH_KEY_PATH="$HOME/.ssh/id_rsa"
 
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
-  echo "ℹ️ You are on the main server (bot)."
-  while true; do
-    read -p "📥 Paste public key of a worker node to authorize access (or leave empty to stop): " PUBKEY
-    [[ -z "$PUBKEY" ]] && break
+    echo "ℹ️ You are on the main server (bot)."
+    while true; do
+        read -p "📥 Paste public key of a worker node to authorize access (or leave empty to stop): " PUBKEY
+        [[ -z "$PUBKEY" ]] && break
+        mkdir -p /home/$REMOTE_USER/.ssh
+        touch /home/$REMOTE_USER/.ssh/authorized_keys
+        chmod 700 /home/$REMOTE_USER/.ssh
+        chmod 600 /home/$REMOTE_USER/.ssh/authorized_keys
 
-    mkdir -p /home/$REMOTE_USER/.ssh
-    touch /home/$REMOTE_USER/.ssh/authorized_keys
-    chmod 700 /home/$REMOTE_USER/.ssh
-    chmod 600 /home/$REMOTE_USER/.ssh/authorized_keys
-
-    if grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys; then
-      echo "⚠️ This key already exists. Skipping."
-    else
-      echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
-      echo "" >> /home/$REMOTE_USER/.ssh/authorized_keys
-      echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
-    fi
-    chown -R $REMOTE_USER:$REMOTE_USER /home/$REMOTE_USER/.ssh
-  done
+        if grep -qxF "$PUBKEY" /home/$REMOTE_USER/.ssh/authorized_keys; then
+            echo "⚠️ This key already exists. Skipping."
+        else
+            echo "$PUBKEY" >> /home/$REMOTE_USER/.ssh/authorized_keys
+            echo "" >> /home/$REMOTE_USER/.ssh/authorized_keys
+            echo "✅ Key added to /home/$REMOTE_USER/.ssh/authorized_keys"
+        fi
+        chown -R $REMOTE_USER:$REMOTE_USER /home/$REMOTE_USER/.ssh
+    done
 else
-  echo "🔑 This is a worker node."
-  if [[ ! -f "$SSH_KEY_PATH" ]]; then
-    echo "📁 No SSH key found, generating..."
-    ssh-keygen -t rsa -b 4096 -C "$HOST_TAG" -f "$SSH_KEY_PATH" -N ""
-  fi
-  echo "✅ SSH key ready at $SSH_KEY_PATH"
-  echo -e "📋 ${GREEN}Copy the following public key and add it to the main server's authorized_keys:${RESET}"
-  echo -e "${GREEN}--------------------------------------------------${RESET}"
-  cat "$SSH_KEY_PATH.pub"
-  echo -e "${GREEN}--------------------------------------------------${RESET}"
+    echo "🔑 This is a worker node."
+    if [[ ! -f "$SSH_KEY_PATH" ]]; then
+        echo "📁 No SSH key found, generating..."
+        ssh-keygen -t rsa -b 4096 -C "$HOST_TAG" -f "$SSH_KEY_PATH" -N ""
+    fi
+    echo "✅ SSH key ready at $SSH_KEY_PATH"
+    echo -e "📋 ${GREEN}Copy the following public key and add it to the main server's authorized_keys:${RESET}"
+    echo -e "${GREEN}--------------------------------------------------${RESET}"
+    cat "$SSH_KEY_PATH.pub"
+    echo -e "${GREEN}--------------------------------------------------${RESET}"
 fi
 
 # === CREATE update_points.sh ===
@@ -84,17 +82,16 @@ set -euo pipefail
 ENV_FILE="/root/.dria_env"
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 
-# Prompt for required variables if unset; default REMOTE_USER to 'driauser'
+# Prompt for HOST_TAG and REMOTE_HOST if unset
 if [[ -z "${HOST_TAG:-}" ]]; then
-  read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
+    read -p "🖥️ Enter HOST_TAG (this server name): " HOST_TAG
 fi
 if [[ -z "${REMOTE_HOST:-}" ]]; then
-  read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
+    read -p "🌍 Enter REMOTE_HOST (bot server IP or 127.0.0.1): " REMOTE_HOST
 fi
-if [[ -z "${REMOTE_USER:-}" ]]; then
-  REMOTE_USER="driauser"
-  echo "👤 Using default REMOTE_USER: $REMOTE_USER"
-fi
+# Default REMOTE_USER to 'driauser'
+REMOTE_USER="${REMOTE_USER:-driauser}"
+echo "👤 Using REMOTE_USER: $REMOTE_USER"
 
 # Save back to .env
 cat > "$ENV_FILE" <<E2
@@ -105,58 +102,43 @@ E2
 
 REMOTE_DIR="/home/$REMOTE_USER/dria_stats"
 CONFIG_DIR="/root/.dria/dkn-compute-launcher"
-TEMP_FILE="/tmp/${HOST_TAG}.json"
+TEMP_FILE=$(mktemp)
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Start JSON
+# Gather profile names into an array
+mapfile -t profiles < <(ls -1 "$CONFIG_DIR"/.env.dria* 2>/dev/null | xargs -n1 basename | sed 's/^\.env\.//')
+
+# Build JSON
 {
-  echo "{"
-  echo "  \"hostname\": \"$HOST_TAG\","
-  echo "  \"timestamp\": \"$TIMESTAMP\","
-  echo "  \"points\": {"
+    echo "{"
+    echo "  \"hostname\": \"$HOST_TAG\","
+    echo "  \"timestamp\": \"$TIMESTAMP\","
+    echo "  \"points\": {"
+    for i in "${!profiles[@]}"; do
+        p="${profiles[$i]}"
+        pts=$(dkn-compute-launcher -p "$p" points 2>&1 | grep -oP '\d+(?= \$DRIA)' || echo "-1")
+        if (( i < ${#profiles[@]}-1 )); then
+            echo "    \"$p\": $pts,"
+        else
+            echo "    \"$p\": $pts"
+        fi
+    done
+    echo "  }"
+    echo "}"
 } > "$TEMP_FILE"
 
-first=true
-
-# Gather profiles from .env.dria* files
-for envfile in "$CONFIG_DIR"/.env.dria*; do
-  [[ -f "$envfile" ]] || continue
-  filename=$(basename "$envfile")
-  profile=${filename#.env.}
-
-  if $first; then
-    first=false
-  else
-    echo "," >> "$TEMP_FILE"
-  fi
-
-  # Fetch points count
-  pts=$(dkn-compute-launcher -p "$profile" points 2>&1 \
-        | grep -oP '\d+(?= \$DRIA)' \
-        || echo "-1")
-
-  echo -n "    \"$profile\": $pts" >> "$TEMP_FILE"
-done
-
-# Close JSON
-{
-  echo ""
-  echo "  }"
-  echo "}"
-} >> "$TEMP_FILE"
-
-# Send to bot server
+# Send JSON file
 if [[ "$REMOTE_HOST" == "127.0.0.1" || "$REMOTE_HOST" == "localhost" ]]; then
-  cp "$TEMP_FILE" "$REMOTE_DIR/$HOST_TAG.json"
+    mv "$TEMP_FILE" "$REMOTE_DIR/$HOST_TAG.json"
 else
-  scp -o StrictHostKeyChecking=no -q "$TEMP_FILE" \
-      "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$HOST_TAG.json"
+    scp -o StrictHostKeyChecking=no -q "$TEMP_FILE" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/$HOST_TAG.json"
+    rm -f "$TEMP_FILE"
 fi
 EOF
 
 chmod +x "$SCRIPT_PATH"
 
-# === CREATE systemd SERVICE & TIMER ===
+# === SETUP systemd SERVICE & TIMER ===
 echo "🛠 Creating systemd service & timer..."
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
