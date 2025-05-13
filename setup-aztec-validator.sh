@@ -5,8 +5,12 @@ set -euo pipefail
 echo -n "Enter RPC URL: "
 read RPC_URL
 
-echo -n "Enter your Private Key (with 0x): "
+echo -n "Enter your Private Key (with or without 0x): "
 read YourPrivateKey
+# Добавляем префикс 0x, если отсутствует
+if [[ "${YourPrivateKey:0:2}" != "0x" && "${YourPrivateKey:0:2}" != "0X" ]]; then
+  YourPrivateKey="0x${YourPrivateKey}"
+fi
 
 echo -n "Enter your Address: "
 read YourAddress
@@ -25,12 +29,12 @@ Type=oneshot
 Environment=RPC_URL=$RPC_URL
 Environment=YourPrivateKey=$YourPrivateKey
 Environment=YourAddress=$YourAddress
-ExecStart=/usr/bin/aztec add-l1-validator \\
-  --l1-rpc-urls "\$RPC_URL" \\
-  --private-key "\$YourPrivateKey" \\
-  --attester "\$YourAddress" \\
-  --proposer-eoa "\$YourAddress" \\
-  --staking-asset-handler 0xF739D03e98e23A7B65940848aBA8921fF3bAc4b2 \\
+ExecStart=/usr/bin/aztec add-l1-validator \
+  --l1-rpc-urls "\$RPC_URL" \
+  --private-key "\$YourPrivateKey" \
+  --attester "\$YourAddress" \
+  --proposer-eoa "\$YourAddress" \
+  --staking-asset-handler 0xF739D03e98e23A7B65940848aBA8921fF3bAc4b2 \
   --l1-chain-id 11155111
 EOF
 
