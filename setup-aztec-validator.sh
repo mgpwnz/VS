@@ -49,6 +49,8 @@ User=root
 EnvironmentFile=$ENV_FILE
 Environment=HOME=/root
 WorkingDirectory=/root
+# Считаем exit code=1 успешным, чтобы избежать падения из-за revert
+SuccessExitStatus=1
 ExecStart=$AZTEC_BIN add-l1-validator \
   --l1-rpc-urls "${RPC_URL}" \
   --private-key "${YourPrivateKey}" \
@@ -56,6 +58,9 @@ ExecStart=$AZTEC_BIN add-l1-validator \
   --proposer-eoa "${YourAddress}" \
   --staking-asset-handler 0xF739D03e98e23A7B65940848aBA8921fF3bAc4b2 \
   --l1-chain-id 11155111
+StandardOutput=journal
+StandardError=journal
+
 EOF
 
 # --- Шаг 6: создаём или обновляем таймер с новым расписанием ---
