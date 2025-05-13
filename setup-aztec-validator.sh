@@ -6,10 +6,8 @@ ENV_FILE="$HOME/.env_aztec-validator"
 
 # --- Шаг 1: загрузка или ввод обязательных переменных ---
 if [[ -f "$ENV_FILE" ]]; then
-  # Если файл существует, подгружаем переменные
   source "$ENV_FILE"
 else
-  # Иначе спрашиваем один раз и сохраняем
   echo -n "Enter RPC URL: "
   read RPC_URL
 
@@ -31,9 +29,15 @@ EOF
   echo "✅ Переменные сохранены в $ENV_FILE"
 fi
 
-# --- Шаг 2: ввод времени запуска ---
-echo -n "Enter run time (YYYY-MM-DD HH:MM:SS): "
-read SCHEDULE
+# --- Шаг 2: ввод даты и времени запуска по киевскому ---
+echo -n "Enter run date (YYYY-MM-DD): "
+read RUN_DATE  # например 2025-05-14
+
+echo -n "Enter run time (HH:MM:SS): "
+read RUN_TIME  # например 00:49:01
+
+# формируем строку OnCalendar с указанием часового пояса Kyiv
+SCHEDULE="${RUN_DATE} ${RUN_TIME} Europe/Kyiv"
 
 # --- Шаг 3: проверка наличия CLI aztec ---
 AZTEC_BIN=$(command -v aztec || true)
@@ -70,13 +74,13 @@ StandardError=journal
 
 EOF
 
-# --- Шаг 5: создаём или обновляем timer-файл ---
+# --- Шаг 5: создаём или обновляем timer-файл с timezone ---
 cat > "$TIMER_PATH" <<EOF
 [Unit]
-Description=Run aztec-validator.service at $SCHEDULE
+Description=Run aztec-validator.service at ${RUN_DATE} ${RUN_TIME} Kyiv time
 
 [Timer]
-OnCalendar=$SCHEDULE
+OnCalendar=${SCHEDULE}
 Persistent=true
 
 [Install]
