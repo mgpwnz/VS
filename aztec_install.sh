@@ -34,10 +34,11 @@ while true; do
             echo "Installing Aztec CLI..."
             curl -sL https://install.aztec.network | bash || { echo "❌ Aztec installation failed"; exit 1; }
 
-            # Add Aztec CLI to PATH in .bashrc
+            # Add Aztec CLI to PATH in .bashrc if not already present
             AZTEC_DIR="$HOME/.aztec/bin"
-            grep -qxF "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc" \
-                || echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
+            if ! grep -Fxq "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc"; then
+                echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
+            fi
             source "$HOME/.bashrc"
 
             # Create or source environment file
