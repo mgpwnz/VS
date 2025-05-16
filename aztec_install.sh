@@ -1,95 +1,119 @@
 #!/bin/bash
 # Aztec Sequencer Node Management Script
-# This script allows you to install dependencies, Aztec CLI tools,
-# run & manage the Aztec Sequencer Node, view logs, check sync status,
-# generate proofs, update, or uninstall the node.
+# This script allows you to install system dependencies, Aztec CLI tools,
+# run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
 
 PS3='Select an action: '
 options=(
-  "Install dependencies"
-  "Install Aztec Tools"
-  "Run Sequencer Node"
-  "View Logs"
-  "Check Sync Status"
-  "Generate Proof"
-  "Update Node"
-  "Uninstall Node"
-  "Exit"
+    "Install dependencies"
+    "Install Aztec Tools"
+    "Run Sequencer Node"
+    "View Logs"
+    "Check Sync Status"
+    "Generate Proof"
+    "Update Node"
+    "Uninstall Node"
+    "Exit"
 )
 
 while true; do
-  select opt in "${options[@]}"; do
-    case $opt in
-      "Install dependencies")
-        echo "Updating package lists and installing required packages..."
-        sudo apt-get update && sudo apt-get upgrade -y
-        sudo apt-get install -y \
-          curl iptables build-essential git wget lz4 jq make gcc nano automake \
-          autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev \
-          tar clang bsdmainutils ncdu unzip
-        # Install Docker if not already present
-        . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
-        break
-        ;;
+    select opt in "${options[@]}"; do
+        case $opt in
+        "Install dependencies")
+            echo "Updating package lists and installing required packages..."
+            sudo apt-get update && sudo apt-get upgrade -y
+            sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \
+                autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \
+                bsdmainutils ncdu unzip
+            # Install Docker if not already present
+            . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
+            break
+            ;;
 
-      "Install Aztec Tools")
-        echo "Installing Aztec CLI..."
-        curl -sL https://install.aztec.network | bash || { echo "❌ Aztec installation failed"; exit 1; }
+        "Install Aztec Tools")
+            echo "Installing Aztec CLI..."
+            curl -sL https://install.aztec.network | bash || { echo "❌ Aztec installation failed"; exit 1; }
 
-        # Add Aztec CLI to PATH if missing
-        AZTEC_DIR="$HOME/.aztec/bin"
-        if ! grep -Fxq "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc"; then
-          echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
-        fi
-        # Reload
-        source "$HOME/.bashrc"
+            # Add Aztec CLI to PATH in .bashrc if not already present
+            AZTEC_DIR="$HOME/.aztec/bin"
+            if ! grep -Fxq "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc"; then
+                echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
+            fi
+            source "$HOME/.bashrc"
 
-        # Source or create env file
-        ENV_FILE="$HOME/.env.aztec"
-        [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
+            # Create or source environment file
+            ENV_FILE="$HOME/.env.aztec"
+            [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 
-        # Prompt for required variables
-        [[ -z "$RPC_URL" ]] && read -p "Enter Sepolia RPC URL: " RPC_URL && echo "RPC_URL=$RPC_URL" >> "$ENV_FILE"
-        [[ -z "$BEACON_URL" ]] && read -p "Enter Beacon node URL: " BEACON_URL && echo "BEACON_URL=$BEACON_URL" >> "$ENV_FILE"
-        if [[ -z "$private_key" ]]; then
-          read -p "Enter your validator private key: " private_key
-          [[ "$private_key" != 0x* ]] && private_key="0x$private_key"
-          echo "private_key=$private_key" >> "$ENV_FILE"
-        fi
-        [[ -z "$public_key" ]] && read -p "Enter your EVM address (public key): " public_key && echo "public_key=$public_key" >> "$ENV_FILE"
-        break
-        ;;
+            # Prompt for required variables if missing
+            if [[ -z "$RPC_URL" ]]; then
+                read -p "Enter Sepolia RPC URL: " RPC_URL
+                echo "RPC_URL=\"$RPC_URL\"" >> "$ENV_FILE"
+            fi
+            if [[ -z "$BEACON_URL" ]]; then
+                read -p "Enter Beacon node URL: " BEACON_URL
+                echo "BEACON_URL=\"$BEACON_URL\"" >> "$ENV_FILE"
+            fi
+            if [[ -z "$private_key" ]]; then
+                read -p "Enter your validator private key: " private_key
+                # Ensure private key starts with 0x
+                if [[ "$private_key" != 0x* ]]; then
+                    private_key="0x$private_key"
+                fi
+                echo "private_key=\"$private_key\"" >> "$ENV_FILE"
+            fi
+            if [[ -z "$public_key" ]]; then
+                read -p "Enter your EVM address (public key): " public_key
+                echo "public_key=\"$public_key\"" >> "$ENV_FILE"
+            fi
+            break
+            ;;
 
-      "Run Sequencer Node")
-        echo "Cleaning up existing Aztec Sequencer Node (if any)..."
-        # Stop and remove existing containers
-        docker ps -q --filter "ancestor=aztecprotocol/aztec" | xargs -r docker stop | xargs -r docker rm
+        "Run Sequencer Node")
+            echo "Finding and cleaning up existing Aztec Sequencer Node..."
+            # Stop and remove containers if any
+            CONTAINERS=$(docker ps -q --filter "ancestor=aztecprotocol/aztec")
+            if [[ -n "$CONTAINERS" ]]; then
+                echo "Stopping Aztec sequencer containers..."
+                docker stop $CONTAINERS && docker rm $CONTAINERS
+            else
+                echo "No running Aztec sequencer containers found."
+            fi
+            # Kill tmux session if exists
+            if tmux has-session -t aztec 2>/dev/null; then
+                echo "Killing tmux session 'aztec'..."
+                tmux kill-session -t aztec
+            else
+                echo "No tmux session 'aztec' found."
+            fi
+            # Delete old data if present
+            DATA_DIR="$HOME/.aztec/alpha-testnet/data"
+            if [[ -d "$DATA_DIR" ]]; then
+                echo "Removing old data directory..."
+                rm -rf "$DATA_DIR"
+            else
+                echo "Data directory not found at $DATA_DIR."
+            fi
+            echo "Preparing to launch the Aztec Sequencer Node..."
+            ENV_FILE="$HOME/.env.aztec"
+            if [[ ! -f "$ENV_FILE" ]]; then
+                echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."; exit 1
+            fi
+            source "$ENV_FILE"
 
-        # Kill tmux session 'aztec' if exists
-        tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -qx "aztec" && tmux kill-session -t aztec
+            # Determine the server's primary IP
+            SERVER_IP=$(hostname -I | awk '{print $1}')
 
-        # Remove old data directory
-        DATA_DIR="$HOME/.aztec/alpha-testnet/data"
-        [[ -d "$DATA_DIR" ]] && rm -rf "$DATA_DIR"
+            # Create and navigate to the project directory
+            PROJECT_DIR="$HOME/aztec"
+            mkdir -p "$PROJECT_DIR"
+            cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
 
-        echo "Launching Aztec Sequencer Node..."
-        ENV_FILE="$HOME/.env.aztec"
-        [[ ! -f "$ENV_FILE" ]] && echo "❌ Environment file not found. Run 'Install Aztec Tools' first." && exit 1
-        source "$ENV_FILE"
-
-        # Determine host IP
-        SERVER_IP=$(hostname -I | awk '{print $1}')
-
-        # Prepare project directory
-        PROJECT_DIR="$HOME/aztec"
-        mkdir -p "$PROJECT_DIR" && cd "$PROJECT_DIR"
-
-        # Generate docker-compose.yml
-        cat > docker-compose.yml <<EOF
+            # Generate docker-compose.yml with actual values
+            cat > docker-compose.yml <<EOF
 services:
   aztec-node:
     container_name: aztec-sequencer
-    network_mode: host
     image: aztecprotocol/aztec:alpha-testnet
     restart: unless-stopped
     environment:
@@ -102,63 +126,74 @@ services:
       LOG_LEVEL: debug
     entrypoint: >
       sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
+    ports:
+      - "40400:40400/tcp"
+      - "40400:40400/udp"
+      - "8080:8080"
     volumes:
       - "$HOME/.aztec/alpha-testnet/data/:/data"
 EOF
 
-        docker compose up -d
-        break
-        ;;
+            # Start the node
+            docker compose up -d
+            break
+            ;;
 
-      "View Logs")
-        docker logs -f aztec-sequencer --tail 100
-        break
-        ;;
+        "View Logs")
+            echo "Tailing the last 100 lines of Aztec Sequencer logs..."
+            docker logs -f aztec-sequencer --tail 100
+            break
+            ;;
 
-      "Check Sync Status")
-        curl -s -X POST -H 'Content-Type: application/json' \
-          -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
-          http://localhost:8080 | jq -r ".result.proven.number"
-        break
-        ;;
+        "Check Sync Status")
+            echo "Fetching L2 tip number from the local Sequencer RPC..."
+            curl -s -X POST -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+                http://localhost:8080 | jq -r ".result.proven.number"
+            break
+            ;;
+        "Generate Proof")
+            echo "Generating proof..."
+            # Check block number
+            BLOCK_NUMBER=$(curl -s -X POST -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+                http://localhost:8080 | jq -r ".result.proven.number")
+            echo "Block number: $BLOCK_NUMBER"
+            # Generate proof using actual block number
+            PROOF=$(curl -s -X POST -H 'Content-Type: application/json' \
+                -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK_NUMBER\",\"$BLOCK_NUMBER\"],\"id\":67}" \
+                http://localhost:8080 | jq -r ".result")
+            echo "Proof: $PROOF"
+            break
+            ;;
+        "Update Node")
+            echo "Updating Aztec Sequencer Node..."
+            docker compose -f "$HOME/aztec/docker-compose.yml" down
+            "$HOME/.aztec/bin/aztec-up" alpha-testnet
+            rm -rf "$HOME/.aztec/alpha-testnet/data/"
+            docker compose -f "$HOME/aztec/docker-compose.yml" up -d
+            break
+            ;;
 
-      "Generate Proof")
-        BLOCK_NUMBER=$(curl -s -X POST -H 'Content-Type: application/json' \
-          -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
-          http://localhost:8080 | jq -r ".result.proven.number")
-        echo "Block number: $BLOCK_NUMBER"
-        PROOF=$(curl -s -X POST -H 'Content-Type: application/json' \
-          -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK_NUMBER\",\"$BLOCK_NUMBER\"],\"id\":67}" \
-          http://localhost:8080 | jq -r ".result")
-        echo "Proof: $PROOF"
-        break
-        ;;
+        "Uninstall Node")
+            read -rp "Wipe all data and remove the Aztec project directory? [y/N] " response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                docker compose -f "$HOME/aztec/docker-compose.yml" down -v
+                rm -rf "$HOME/aztec"
+                echo "Aztec Sequencer Node and data removed."
+            else
+                echo "Uninstallation cancelled."
+            fi
+            break
+            ;;
 
-      "Update Node")
-        docker compose down
-        "$HOME/.aztec/bin/aztec-up" alpha-testnet
-        rm -rf "$HOME/.aztec/alpha-testnet/data/"
-        docker compose up -d
-        break
-        ;;
-
-      "Uninstall Node")
-        read -rp "Wipe all data and remove the Aztec project directory? [y/N] " response
-        if [[ "$response" =~ ^[Yy]$ ]]; then
-          docker compose down -v
-          rm -rf "$HOME/aztec"
-        fi
-        break
-        ;;
-
-      "Exit")
-        exit 0
-        ;;
-
-      *)
-        echo "Invalid option."
-        ;;
-    esac
-  done
+        "Exit")
+            echo "Goodbye!"; exit 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            ;;
+        esac
+    done
 
 done
