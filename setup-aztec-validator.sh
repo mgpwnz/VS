@@ -127,6 +127,6 @@ systemctl enable --now aztec-validator.timer
 echo ""
 echo "✅ Система запланирована:"
 echo "    • Ежедневный запуск в ${RUN_TIME} (Kyiv)"
-echo "    • До 3 попыток при ошибках (30s пауза)"
+echo "    • До 3 попыток при ошибках (2s пауза)"
 echo "    • Service: ${SERVICE_PATH}"
 echo "    • Timer:   ${TIMER_PATH}"
