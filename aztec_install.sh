@@ -71,6 +71,13 @@ while true; do
 
         "Run Sequencer Node")
             echo "Finding and cleaning up existing Aztec Sequencer Node..."
+            # Kill tmux session if exists
+            if tmux has-session -t aztec 2>/dev/null; then
+                echo "Killing tmux session 'aztec'..."
+                tmux kill-session -t aztec
+            else
+                echo "No tmux session 'aztec' found."
+            fi
             # Stop and remove containers if any
             CONTAINERS=$(docker ps -q --filter "name=aztec-start")
             if [[ -n "$CONTAINERS" ]]; then
@@ -78,13 +85,6 @@ while true; do
                 docker stop $CONTAINERS && docker rm $CONTAINERS
             else
                 echo "No running Aztec sequencer containers found."
-            fi
-            # Kill tmux session if exists
-            if tmux has-session -t aztec 2>/dev/null; then
-                echo "Killing tmux session 'aztec'..."
-                tmux kill-session -t aztec
-            else
-                echo "No tmux session 'aztec' found."
             fi
             # Delete old data if present
             DATA_DIR="$HOME/.aztec/alpha-testnet/data"
