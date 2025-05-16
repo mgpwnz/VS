@@ -10,6 +10,7 @@ options=(
     "Run Sequencer Node"
     "View Logs"
     "Check Sync Status"
+    "Generate Proof"
     "Update Node"
     "Uninstall Node"
     "Exit"
