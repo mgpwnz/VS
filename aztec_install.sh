@@ -21,8 +21,8 @@ while true; do
         "Install dependencies")
             echo "Updating package lists and installing required packages..."
             sudo apt-get update && sudo apt-get upgrade -y
-            sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \ 
-                autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \ 
+            sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \
+                autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \
                 bsdmainutils ncdu unzip
             # Install Docker if not already present
             . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
@@ -54,6 +54,10 @@ while true; do
             fi
             if [[ -z "$private_key" ]]; then
                 read -p "Enter your validator private key: " private_key
+                # Ensure private key starts with 0x
+                if [[ "$private_key" != 0x* ]]; then
+                    private_key="0x$private_key"
+                fi
                 echo "private_key=\"$private_key\"" >> "$ENV_FILE"
             fi
             if [[ -z "$public_key" ]]; then
@@ -79,9 +83,8 @@ while true; do
             mkdir -p "$PROJECT_DIR"
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
 
-            # Generate docker-compose.yml
+            # Generate docker-compose.yml with actual values
             cat > docker-compose.yml <<EOF
-version: '3.8'
 services:
   aztec-node:
     container_name: aztec-sequencer
@@ -89,12 +92,12 @@ services:
     image: aztecprotocol/aztec:alpha-testnet
     restart: unless-stopped
     environment:
-      ETHEREUM_HOSTS: \${RPC_URL}
-      L1_CONSENSUS_HOST_URLS: \${BEACON_URL}
+      ETHEREUM_HOSTS: $RPC_URL
+      L1_CONSENSUS_HOST_URLS: $BEACON_URL
       DATA_DIRECTORY: /data
-      VALIDATOR_PRIVATE_KEY: \${private_key}
-      COINBASE: \${public_key}
-      P2P_IP: ${SERVER_IP}
+      VALIDATOR_PRIVATE_KEY: $private_key
+      COINBASE: $public_key
+      P2P_IP: $SERVER_IP
       LOG_LEVEL: debug
     entrypoint: >
       sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
@@ -149,7 +152,6 @@ EOF
         "Exit")
             echo "Goodbye!"; exit 0
             ;;
-
         *)
             echo "Invalid option. Please try again."
             ;;
