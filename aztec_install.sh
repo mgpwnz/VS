@@ -68,6 +68,14 @@ while true; do
             ;;
 
         "Run Sequencer Node")
+            echo "Finding Aztec Sequencer Node..."
+            # Check if Aztec CLI is installed
+            docker stop $(docker ps -q --filter "ancestor=aztecprotocol/aztec") && docker rm $(docker ps -a -q --filter "ancestor=aztecprotocol/aztec")
+            # kill tmux sessions
+            tmux kill-session -t aztec 2>/dev/null
+            # delete old data
+            rm -rf ~/.aztec/alpha-testnet/data/
+            # Run the Aztec Sequencer Node
             echo "Preparing to launch the Aztec Sequencer Node..."
             ENV_FILE="$HOME/.env.aztec"
             if [[ ! -f "$ENV_FILE" ]]; then
@@ -126,7 +134,20 @@ EOF
                 http://localhost:8080 | jq -r ".result.proven.number"
             break
             ;;
-
+        "Generate Proof")
+            echo "Generating proof..."
+            # Check block number
+            BLOCK_NUMBER=$(curl -s -X POST -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+                http://localhost:8080 | jq -r ".result.proven.number")
+            echo "Block number: $BLOCK_NUMBER"
+            # Generate proof using actual block number
+            PROOF=$(curl -s -X POST -H 'Content-Type: application/json' \
+                -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK_NUMBER\",\"$BLOCK_NUMBER\"],\"id\":67}" \
+                http://localhost:8080 | jq -r ".result")
+            echo "Proof: $PROOF"
+            break
+            ;;
         "Update Node")
             echo "Updating Aztec Sequencer Node..."
             docker compose -f "$HOME/aztec/docker-compose.yml" down
