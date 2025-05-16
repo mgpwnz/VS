@@ -70,14 +70,30 @@ while true; do
             ;;
 
         "Run Sequencer Node")
-            echo "Finding Aztec Sequencer Node..."
-            # Check if Aztec CLI is installed
-            docker stop $(docker ps -q --filter "ancestor=aztecprotocol/aztec") && docker rm $(docker ps -a -q --filter "ancestor=aztecprotocol/aztec")
-            # kill tmux sessions
-            tmux kill-session -t aztec 2>/dev/null
-            # delete old data
-            rm -rf ~/.aztec/alpha-testnet/data/
-            # Run the Aztec Sequencer Node
+            echo "Finding and cleaning up existing Aztec Sequencer Node..."
+            # Stop and remove containers if any
+            CONTAINERS=$(docker ps -q --filter "ancestor=aztecprotocol/aztec")
+            if [[ -n "$CONTAINERS" ]]; then
+                echo "Stopping Aztec sequencer containers..."
+                docker stop $CONTAINERS && docker rm $CONTAINERS
+            else
+                echo "No running Aztec sequencer containers found."
+            fi
+            # Kill tmux session if exists
+            if tmux has-session -t aztec 2>/dev/null; then
+                echo "Killing tmux session 'aztec'..."
+                tmux kill-session -t aztec
+            else
+                echo "No tmux session 'aztec' found."
+            fi
+            # Delete old data if present
+            DATA_DIR="$HOME/.aztec/alpha-testnet/data"
+            if [[ -d "$DATA_DIR" ]]; then
+                echo "Removing old data directory..."
+                rm -rf "$DATA_DIR"
+            else
+                echo "Data directory not found at $DATA_DIR."
+            fi
             echo "Preparing to launch the Aztec Sequencer Node..."
             ENV_FILE="$HOME/.env.aztec"
             if [[ ! -f "$ENV_FILE" ]]; then
