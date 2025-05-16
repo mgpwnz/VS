@@ -88,7 +88,6 @@ while true; do
 services:
   aztec-node:
     container_name: aztec-sequencer
-    network_mode: host
     image: aztecprotocol/aztec:alpha-testnet
     restart: unless-stopped
     environment:
