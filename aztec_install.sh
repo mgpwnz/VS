@@ -72,7 +72,7 @@ while true; do
         "Run Sequencer Node")
             echo "Finding and cleaning up existing Aztec Sequencer Node..."
             # Stop and remove containers if any
-            CONTAINERS=$(docker ps --filter "name=aztec-start")
+            CONTAINERS=$(docker ps -q --filter "name=aztec-start")
             if [[ -n "$CONTAINERS" ]]; then
                 echo "Stopping Aztec sequencer containers..."
                 docker stop $CONTAINERS && docker rm $CONTAINERS
