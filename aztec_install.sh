@@ -108,13 +108,15 @@ while true; do
             PROJECT_DIR="$HOME/aztec"
             mkdir -p "$PROJECT_DIR"
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
-
+            # Choose image file
+            read -p "Enter the image version (default: aztecprotocol/aztec:alpha-testnet): " image_version
+            IMAGE_VERSION=${IMAGE_VERSION:-aztecprotocol/aztec:alpha-testnet}
             # Generate docker-compose.yml with actual values
             cat > docker-compose.yml <<EOF
 services:
   aztec-node:
     container_name: aztec-sequencer
-    image: aztecprotocol/aztec:alpha-testnet
+    image: $image_version
     restart: unless-stopped
     environment:
       ETHEREUM_HOSTS: $RPC_URL
