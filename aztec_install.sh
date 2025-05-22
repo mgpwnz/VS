@@ -116,7 +116,7 @@ while true; do
 services:
   aztec-node:
     container_name: aztec-sequencer
-    image: $image_version
+    image: ${image_version}
     restart: unless-stopped
     environment:
       ETHEREUM_HOSTS: $RPC_URL
