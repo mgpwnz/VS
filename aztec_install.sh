@@ -109,8 +109,8 @@ while true; do
             mkdir -p "$PROJECT_DIR"
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
             # Prompt for image version with correct fallback
-            read -rp "Enter the image version (default: aztecprotocol/aztec:alpha-testnet): " image_version
-            image_version=${image_version:-aztecprotocol/aztec:alpha-testnet}
+            read -rp "Enter the image version (default: aztecprotocol/aztec:latest): " image_version
+            image_version=${image_version:-aztecprotocol/aztec:latest}
             # Generate docker-compose.yml with actual values
             cat > docker-compose.yml <<EOF
 services:
