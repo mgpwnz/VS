@@ -172,7 +172,7 @@ EOF
             echo "Updating Aztec Sequencer Node..."
             docker image pull aztecprotocol/aztec:latest
             docker compose -f "$HOME/aztec/docker-compose.yml" down
-            "$HOME/.aztec/bin/aztec-up" alpha-testnet
+            "$HOME/.aztec/bin/aztec-up" latest
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
             break
