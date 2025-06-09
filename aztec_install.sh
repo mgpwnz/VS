@@ -100,7 +100,8 @@ while true; do
                 echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."; exit 1
             fi
             source "$ENV_FILE"
-
+            # Update CLI tools
+            "$HOME/.aztec/bin/aztec-up" latest
             # Determine the server's primary IP
             SERVER_IP=$(hostname -I | awk '{print $1}')
 
