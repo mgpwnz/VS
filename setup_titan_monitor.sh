@@ -14,33 +14,19 @@ cat >/usr/local/bin/check_titan.sh <<'EOF'
 #!/usr/bin/env bash
 
 CONTAINER_NAME="titan-edge"
-PATTERNS=(
-    "TITAN-EDGE CONNECTION LOST"
-    "heartbeat: keepalive failed"
-    "node offline or not exist"
-)
 
-LOG_OUTPUT=$(docker logs --tail 100 "$CONTAINER_NAME" 2>&1)
+STATUS=$(docker inspect -f '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null)
 
-if [ -z "$LOG_OUTPUT" ]; then
-    echo "[`date`] Немає логів. Можливо контейнер ще не запущений або ще нічого не вивів. Перезапуск не потрібен."
-    exit 0
+if [ -z "$STATUS" ]; then
+    echo "[`date`] Контейнер $CONTAINER_NAME не знайдений!"
+    exit 1
 fi
 
-RESTART_NEEDED=0
-
-for pattern in "${PATTERNS[@]}"; do
-    if echo "$LOG_OUTPUT" | grep -q "$pattern"; then
-        RESTART_NEEDED=1
-        break
-    fi
-done
-
-if [ $RESTART_NEEDED -eq 1 ]; then
-    echo "[`date`] Знайдено ознаку обриву з'єднання, перезапускаємо контейнер..."
+if [ "$STATUS" = "exited" ]; then
+    echo "[`date`] Контейнер $CONTAINER_NAME у статусі exited. Перезапускаємо..."
     docker restart "$CONTAINER_NAME"
 else
-    echo "[`date`] З'єднання в порядку, перезапуск не потрібен."
+    echo "[`date`] Контейнер $CONTAINER_NAME у статусі $STATUS. Перезапуск не потрібен."
 fi
 EOF
 
@@ -54,7 +40,7 @@ echo "[+] Creating systemd service..."
 
 cat >/etc/systemd/system/check-titan.service <<'EOF'
 [Unit]
-Description=Перевірка та перезапуск titan-edge контейнера, якщо потрібно
+Description=Перевірка чи контейнер titan-edge працює, автоматичний перезапуск якщо потрібно
 
 [Service]
 Type=oneshot
@@ -68,7 +54,7 @@ echo "[+] Creating systemd timer..."
 
 cat >/etc/systemd/system/check-titan.timer <<'EOF'
 [Unit]
-Description=Регулярна перевірка стану titan-edge контейнера
+Description=Регулярна перевірка контейнера titan-edge
 
 [Timer]
 OnBootSec=2min
