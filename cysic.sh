@@ -1,59 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Проверяем root
+# Проверка прав
 if [[ $EUID -ne 0 ]]; then
-  echo "Запустите как root или через sudo" >&2
+  echo "⚠️  Запустите установку с правами root" >&2
   exit 1
 fi
 
-# 1) Пишем скрипт проверки /usr/local/bin/check_cysic.sh
+echo "🚀 Установка мониторинга Cysic..."
+
+# 1. Скрипт проверки
 cat > /usr/local/bin/check_cysic.sh <<'EOF'
 #!/usr/bin/env bash
-set -euo pipefail
+# Мониторинг cysic.service: рестарт при «зависании» или критичных ошибках
 
 LOGFILE=/var/log/cysic-monitor.log
-# порог «зависания» в секундах (30 минут)
-MAX_AGE=$((30*60))
+MAX_AGE=$((30*60))             # 30 мин в секундах
+SINCE="30 minutes ago"
+PATTERNS="websocket: close 1006|server return error|Please register"
 
-# Ошибки, при которых надо рестарт
-PATTERNS=(
-  "websocket: close 1006"
-  "server return error"
-  "Please register"
-)
+# 1) Последняя строка лога
+last_line=\$(journalctl -u cysic.service -n1 --no-pager --output=short-iso 2>/dev/null)
 
-# Текущее время
-now=$(date +%s)
-
-# Последняя строка лога в ISO-формате
-last_line=\$(journalctl -u cysic.service -n1 --no-pager --output=short-iso)
-# Берём первый и второй столбцы: "YYYY-MM-DD HH:MM:SS"
-ts=\$(echo "\$last_line" | awk '{print \$1" "\$2}')
-# Переводим в epoch
-last_ts=\$(date -d "\$ts" +%s || echo 0)
-age=\$((now - last_ts))
-
-if (( age > MAX_AGE )); then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Лог завис более чем на \$((MAX_AGE/60)) мин (посл. запись \$age сек назад)—рестарт" >> \$LOGFILE
+if [ -z "\$last_line" ]; then
+  echo "[\$(date '+%F %T')] Нет записей cysic.service — рестарт" >> "\$LOGFILE"
   systemctl restart cysic.service
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] cysic.service перезапущен (stale)"     >> \$LOGFILE
+  echo "[\$(date '+%F %T')] Перезапущен (no logs)"       >> "\$LOGFILE"
   exit 0
 fi
 
-# Если логи свежие, ищем критичные ошибки за последние 30 минут
-if journalctl -u cysic.service --since "30 minutes ago" --no-pager \
-     | grep -E -q "$(IFS='|'; echo "\${PATTERNS[*]}")"; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Ошибка найдена в логах—рестарт" >> \$LOGFILE
+# 2) Возраст последней записи
+ts=\$(printf '%s' "\$last_line" | awk '{print \$1" "\$2}')
+last_ts=\$(date -d "\$ts" +%s 2>/dev/null || echo 0)
+age=\$(( \$(date +%s) - last_ts ))
+
+if [ "\$age" -gt "\$MAX_AGE" ]; then
+  echo "[\$(date '+%F %T')] Запись \$age сек назад (>30м) — рестарт" >> "\$LOGFILE"
   systemctl restart cysic.service
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] cysic.service перезапущен (error)" >> \$LOGFILE
+  echo "[\$(date '+%F %T')] Перезапущен (stale)"             >> "\$LOGFILE"
+  exit 0
 fi
+
+# 3) Критичные паттерны в последних 30 мин
+journalctl -u cysic.service --since "\$SINCE" --no-pager 2>/dev/null \
+  | grep -E -q "\$PATTERNS" && {
+    echo "[\$(date '+%F %T')] Найден паттерн ошибки — рестарт" >> "\$LOGFILE"
+    systemctl restart cysic.service
+    echo "[\$(date '+%F %T')] Перезапущен (error)"           >> "\$LOGFILE"
+}
+
+exit 0
 EOF
 
 chmod +x /usr/local/bin/check_cysic.sh
-echo "✔ /usr/local/bin/check_cysic.sh создан"
+echo "✔ Скрипт /usr/local/bin/check_cysic.sh создан"
 
-# 2) Пишем systemd-сервис
+# 2. systemd-сервис
 cat > /etc/systemd/system/check-cysic.service <<'EOF'
 [Unit]
 Description=Check Cysic service health and restart if hung or error
@@ -61,12 +63,12 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/check_cysic.sh
+ExecStart=/usr/bin/env bash /usr/local/bin/check_cysic.sh
 EOF
 
-echo "✔ /etc/systemd/system/check-cysic.service создан"
+echo "✔ Юнит /etc/systemd/system/check-cysic.service создан"
 
-# 3) Пишем systemd-таймер
+# 3. systemd-таймер
 cat > /etc/systemd/system/check-cysic.timer <<'EOF'
 [Unit]
 Description=Run check-cysic.service every 30 minutes
@@ -80,12 +82,12 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-echo "✔ /etc/systemd/system/check-cysic.timer создан"
+echo "✔ Таймер /etc/systemd/system/check-cysic.timer создан"
 
-# 4) Перезагружаем конфиг systemd и запускаем таймер
+# 4. Перезагрузка systemd и запуск
 systemctl daemon-reload
 systemctl enable --now check-cysic.timer
 
 echo
-echo "✅ Установка завершена. Таймер запущен:"
+echo "✅ Установка завершена."
 systemctl list-timers --no-pager | grep check-cysic.timer
