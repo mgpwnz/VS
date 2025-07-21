@@ -3,6 +3,32 @@
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
 version="1.1.2"
+container() {
+    # Generate docker-compose.yml with actual values
+            cat > docker-compose.yml <<EOF
+services:
+  aztec-node:
+    container_name: aztec-sequencer
+    image: "$image_version"
+    restart: unless-stopped
+    environment:
+      ETHEREUM_HOSTS: $RPC_URL
+      L1_CONSENSUS_HOST_URLS: $BEACON_URL
+      DATA_DIRECTORY: /data
+      VALIDATOR_PRIVATE_KEY: $private_key
+      COINBASE: $public_key
+      P2P_IP: $SERVER_IP
+      LOG_LEVEL: debug
+    entrypoint: >
+      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
+    ports:
+      - "40400:40400/tcp"
+      - "40400:40400/udp"
+      - "8080:8080"
+    volumes:
+      - "$HOME/.aztec/alpha-testnet/data/:/data"
+EOF
+}
 PS3='Select an action: '
 options=(
     "Install dependencies"
@@ -112,30 +138,8 @@ while true; do
             read -rp "Enter the image version (default: aztecprotocol/aztec:"$version"): " image_version
             image_version=${image_version:-aztecprotocol/aztec:"$version"}
             # Generate docker-compose.yml with actual values
-            cat > docker-compose.yml <<EOF
-services:
-  aztec-node:
-    container_name: aztec-sequencer
-    image: "$image_version"
-    restart: unless-stopped
-    environment:
-      ETHEREUM_HOSTS: $RPC_URL
-      L1_CONSENSUS_HOST_URLS: $BEACON_URL
-      DATA_DIRECTORY: /data
-      VALIDATOR_PRIVATE_KEY: $private_key
-      COINBASE: $public_key
-      P2P_IP: $SERVER_IP
-      LOG_LEVEL: debug
-    entrypoint: >
-      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
-    ports:
-      - "40400:40400/tcp"
-      - "40400:40400/udp"
-      - "8080:8080"
-    volumes:
-      - "$HOME/.aztec/alpha-testnet/data/:/data"
-EOF
-
+            container
+            echo "Starting Aztec Sequencer Node..."
             # Start the node
             docker compose up -d
             break
@@ -177,6 +181,9 @@ EOF
             docker compose -f "$HOME/aztec/docker-compose.yml" down
             "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
+            # Recreate the docker-compose.yml with the new version
+            container
+            echo "Restarting the Aztec Sequencer Node with the new version..."
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
             break
             ;;
