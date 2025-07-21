@@ -169,14 +169,18 @@ EOF
             break
             ;;
         "Update Node")
-            echo "Updating Aztec Sequencer Node..."
-            docker image pull aztecprotocol/aztec:"$version"
+            read -rp "Enter the new version (default: $version): " new_version
+            new_version=${new_version:-$version}
+
+            echo "Updating Aztec Sequencer Node to version $new_version..."
+            docker image pull aztecprotocol/aztec:"$new_version"
             docker compose -f "$HOME/aztec/docker-compose.yml" down
-            "$HOME/.aztec/bin/aztec-up" "$version"
+            "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
             break
             ;;
+
 
         "Uninstall Node")
             read -rp "Wipe all data and remove the Aztec project directory? [y/N] " response
