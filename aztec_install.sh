@@ -2,7 +2,7 @@
 # Aztec Sequencer Node Management Script
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
-
+version="1.1.2"
 PS3='Select an action: '
 options=(
     "Install dependencies"
@@ -10,7 +10,6 @@ options=(
     "Run Sequencer Node"
     "View Logs"
     "Check Sync Status"
-    "Generate Proof"
     "Update Node"
     "Uninstall Node"
     "Exit"
@@ -39,7 +38,7 @@ while true; do
             if ! grep -Fxq "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc"; then
                 echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
             fi
-            source "$HOME/.bashrc"
+            echo "✅ Aztec CLI added to PATH. To apply changes, type: source ~/.bashrc or restart terminal."
 
             # Create or source environment file
             ENV_FILE="$HOME/.env.aztec"
@@ -70,14 +69,14 @@ while true; do
             ;;
 
         "Run Sequencer Node")
-            echo "Finding and cleaning up existing Aztec Sequencer Node..."
-            # Kill tmux session if exists
-            if tmux has-session -t aztec 2>/dev/null; then
-                echo "Killing tmux session 'aztec'..."
-                tmux kill-session -t aztec
-            else
-                echo "No tmux session 'aztec' found."
-            fi
+            # echo "Finding and cleaning up existing Aztec Sequencer Node..."
+            # # Kill tmux session if exists
+            # if tmux has-session -t aztec 2>/dev/null; then
+            #     echo "Killing tmux session 'aztec'..."
+            #     tmux kill-session -t aztec
+            # else
+            #     echo "No tmux session 'aztec' found."
+            # fi
             # Stop and remove containers if any
             CONTAINERS=$(docker ps -q --filter "name=aztec-start")
             if [[ -n "$CONTAINERS" ]]; then
@@ -101,7 +100,7 @@ while true; do
             fi
             source "$ENV_FILE"
             # Update CLI tools
-            "$HOME/.aztec/bin/aztec-up" latest
+            "$HOME/.aztec/bin/aztec-up" "$version"
             # Determine the server's primary IP
             SERVER_IP=$(hostname -I | awk '{print $1}')
 
@@ -110,8 +109,8 @@ while true; do
             mkdir -p "$PROJECT_DIR"
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
             # Prompt for image version with correct fallback
-            read -rp "Enter the image version (default: aztecprotocol/aztec:latest): " image_version
-            image_version=${image_version:-aztecprotocol/aztec:latest}
+            read -rp "Enter the image version (default: aztecprotocol/aztec:"$version"): " image_version
+            image_version=${image_version:-aztecprotocol/aztec:"$version"}
             # Generate docker-compose.yml with actual values
             cat > docker-compose.yml <<EOF
 services:
@@ -171,9 +170,9 @@ EOF
             ;;
         "Update Node")
             echo "Updating Aztec Sequencer Node..."
-            docker image pull aztecprotocol/aztec:latest
+            docker image pull aztecprotocol/aztec:"$version"
             docker compose -f "$HOME/aztec/docker-compose.yml" down
-            "$HOME/.aztec/bin/aztec-up" latest
+            "$HOME/.aztec/bin/aztec-up" "$version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
             break
