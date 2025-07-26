@@ -128,7 +128,7 @@ while true; do
             # Update CLI tools
             "$HOME/.aztec/bin/aztec-up" "$version"
             # Determine the server's primary IP
-            SERVER_IP=$(hostname -I | awk '{print $1}')
+            SERVER_IP=$(wget -qO- icanhazip.com)
 
             # Create and navigate to the project directory
             PROJECT_DIR="$HOME/aztec"
