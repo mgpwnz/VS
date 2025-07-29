@@ -182,6 +182,7 @@ while true; do
             "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             # Recreate the docker-compose.yml with the new version
+            rm -f "$HOME/aztec/docker-compose.yml"
             container
             echo "Restarting the Aztec Sequencer Node with the new version..."
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
