@@ -173,6 +173,11 @@ while true; do
             break
             ;;
         "Update Node")
+            ENV_FILE="$HOME/.env.aztec"
+            if [[ ! -f "$ENV_FILE" ]]; then
+                echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."; exit 1
+            fi
+            source "$ENV_FILE"
             read -rp "Enter the new version (default: $version): " new_version
             new_version=${new_version:-$version}
 
