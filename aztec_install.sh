@@ -2,7 +2,7 @@
 # Aztec Sequencer Node Management Script
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
-version="1.1.2"
+version="1.2.0"
 container() {
     # Generate docker-compose.yml with actual values
             cat > docker-compose.yml <<EOF
