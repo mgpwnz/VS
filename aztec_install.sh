@@ -3,6 +3,8 @@
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
 version="1.2.0"
+# Determine the server's primary IP
+SERVER_IP=$(wget -qO- eth0.me)
 container() {
     cat > "$HOME/aztec/docker-compose.yml" <<EOF
 services:
@@ -127,8 +129,6 @@ while true; do
             source "$ENV_FILE"
             # Update CLI tools
             "$HOME/.aztec/bin/aztec-up" "$version"
-            # Determine the server's primary IP
-            SERVER_IP=$(wget -qO- icanhazip.com)
 
             # Create and navigate to the project directory
             PROJECT_DIR="$HOME/aztec"
