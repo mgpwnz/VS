@@ -187,11 +187,19 @@ while true; do
             "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             # Recreate the docker-compose.yml with the new version
-            rm -f "$HOME/aztec/docker-compose.yml"
-            sleep 10
+            rm "$HOME/aztec/docker-compose.yml"
+            sleep 3
+            PROJECT_DIR="$HOME/aztec"
+            if [[ ! -d "$PROJECT_DIR" ]]; then
+                echo "Creating Aztec project directory..."
+                mkdir -p "$PROJECT_DIR"
+            fi
+            # Navigate to the project directory
+            cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
             container
             echo "Restarting the Aztec Sequencer Node with the new version..."
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
+            cd "$HOME"
             break
             ;;
 
