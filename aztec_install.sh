@@ -178,33 +178,42 @@ while true; do
                 echo "Creating Aztec project directory..."
                 mkdir -p "$PROJECT_DIR"
             fi
+
             ENV_FILE="$HOME/.env.aztec"
             if [[ ! -f "$ENV_FILE" ]]; then
-                echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."; exit 1
+                echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."
+                exit 1
             fi
             source "$ENV_FILE"
+
             read -rp "Enter the new version (default: $version): " new_version
             new_version=${new_version:-$version}
-
-            echo "Updating Aztec Sequencer Node to version $new_version..."
-            docker image pull aztecprotocol/aztec:"$new_version"
-            docker compose -f "$HOME/aztec/docker-compose.yml" down
-            "$HOME/.aztec/bin/aztec-up" "$new_version"
-            rm -rf "$HOME/.aztec/alpha-testnet/data/"
-            # Recreate the docker-compose.yml with the new version
-            if [[ -f "$HOME/aztec/docker-compose.yml" ]]; then
-                rm -f "$HOME/aztec/docker-compose.yml"
-            fi
-            sleep 2
-            # Navigate to the project directory
-            cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
             image_version="aztecprotocol/aztec:$new_version"
-            container
-            echo "Restarting the Aztec Sequencer Node with the new version..."
+
+            echo "📦 Pulling new image: $image_version..."
+            docker image pull "$image_version"
+
+            echo "⛔ Stopping current node if running..."
+            docker compose -f "$HOME/aztec/docker-compose.yml" down || true
+
+            echo "⬆️ Running aztec-up with version $new_version..."
+            "$HOME/.aztec/bin/aztec-up" "$new_version"
+
+            echo "🧹 Clearing old data..."
+            rm -rf "$HOME/.aztec/alpha-testnet/data/"
+
+            echo "📝 Regenerating docker-compose.yml..."
+            cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
+            container  # <--- ця функція створює docker-compose.yml
+
+            echo "🚀 Starting Aztec Sequencer Node with new version..."
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
+
             cd "$HOME"
+            echo "✅ Node successfully updated to $new_version!"
             break
             ;;
+
 
 
         "Uninstall Node")
