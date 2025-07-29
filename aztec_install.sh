@@ -5,7 +5,7 @@
 version="1.2.0"
 container() {
     # Generate docker-compose.yml with actual values
-            cat > docker-compose.yml <<EOF
+            cat > "docker-compose.yml" <<EOF
 services:
   aztec-node:
     container_name: aztec-sequencer
