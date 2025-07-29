@@ -173,6 +173,11 @@ while true; do
             break
             ;;
         "Update Node")
+            PROJECT_DIR="$HOME/aztec"
+            if [[ ! -d "$PROJECT_DIR" ]]; then
+                echo "Creating Aztec project directory..."
+                mkdir -p "$PROJECT_DIR"
+            fi
             ENV_FILE="$HOME/.env.aztec"
             if [[ ! -f "$ENV_FILE" ]]; then
                 echo "❌ Environment file not found. Please run 'Install Aztec Tools' first."; exit 1
@@ -187,15 +192,11 @@ while true; do
             "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             # Recreate the docker-compose.yml with the new version
-            rm "$HOME/aztec/docker-compose.yml"
-            sleep 3
-            PROJECT_DIR="$HOME/aztec"
-            if [[ ! -d "$PROJECT_DIR" ]]; then
-                echo "Creating Aztec project directory..."
-                mkdir -p "$PROJECT_DIR"
-            fi
+            rm -f "$HOME/aztec/docker-compose.yml"
+            sleep 2
             # Navigate to the project directory
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
+            image_version="aztecprotocol/aztec:$new_version"
             container
             echo "Restarting the Aztec Sequencer Node with the new version..."
             docker compose -f "$HOME/aztec/docker-compose.yml" up -d
