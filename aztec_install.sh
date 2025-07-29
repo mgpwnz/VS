@@ -4,20 +4,19 @@
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
 version="1.2.0"
 container() {
-    # Generate docker-compose.yml with actual values
-            cat > "docker-compose.yml" <<EOF
+    cat > "$HOME/aztec/docker-compose.yml" <<EOF
 services:
   aztec-node:
     container_name: aztec-sequencer
-    image: "$image_version"
+    image: ${image_version}
     restart: unless-stopped
     environment:
-      ETHEREUM_HOSTS: $RPC_URL
-      L1_CONSENSUS_HOST_URLS: $BEACON_URL
+      ETHEREUM_HOSTS: ${RPC_URL}
+      L1_CONSENSUS_HOST_URLS: ${BEACON_URL}
       DATA_DIRECTORY: /data
-      VALIDATOR_PRIVATE_KEY: $private_key
-      COINBASE: $public_key
-      P2P_IP: $SERVER_IP
+      VALIDATOR_PRIVATE_KEY: ${private_key}
+      COINBASE: ${public_key}
+      P2P_IP: ${SERVER_IP}
       LOG_LEVEL: debug
     entrypoint: >
       sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
@@ -29,6 +28,7 @@ services:
       - "$HOME/.aztec/alpha-testnet/data/:/data"
 EOF
 }
+
 PS3='Select an action: '
 options=(
     "Install dependencies"
