@@ -192,7 +192,9 @@ while true; do
             "$HOME/.aztec/bin/aztec-up" "$new_version"
             rm -rf "$HOME/.aztec/alpha-testnet/data/"
             # Recreate the docker-compose.yml with the new version
-            rm -f "$HOME/aztec/docker-compose.yml"
+            if [[ -f "$HOME/aztec/docker-compose.yml" ]]; then
+                rm -f "$HOME/aztec/docker-compose.yml"
+            fi
             sleep 2
             # Navigate to the project directory
             cd "$PROJECT_DIR" || { echo "❌ Cannot change to project directory"; exit 1; }
