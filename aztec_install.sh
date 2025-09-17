@@ -2,7 +2,7 @@
 # Aztec Sequencer Node Management Script
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
-version="1.2.1"
+version="2.0.2"
 # Determine the server's primary IP
 SERVER_IP=$(wget -qO- eth0.me)
 container() {
@@ -21,7 +21,7 @@ services:
       P2P_IP: ${SERVER_IP}
       LOG_LEVEL: debug
     entrypoint: >
-      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network alpha-testnet --node --archiver --sequencer'
+      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network testnet --node --archiver --sequencer'
     ports:
       - "40400:40400/tcp"
       - "40400:40400/udp"
