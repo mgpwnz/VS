@@ -19,7 +19,7 @@ services:
       VALIDATOR_PRIVATE_KEY: ${private_key}
       COINBASE: ${public_key}
       P2P_IP: ${SERVER_IP}
-      LOG_LEVEL: debug
+      LOG_LEVEL: info
     entrypoint: >
       sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network testnet --node --archiver --sequencer'
     ports:
