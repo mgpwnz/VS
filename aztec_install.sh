@@ -2,7 +2,7 @@
 # Aztec Sequencer Node Management Script
 # This script allows you to install system dependencies, Aztec CLI tools,
 # run & manage the Aztec Sequencer Node, view logs, check sync status, update, or uninstall.
-version="2.0.2"
+version="2.0.3"
 # Determine the server's primary IP
 SERVER_IP=$(wget -qO- eth0.me)
 container() {
