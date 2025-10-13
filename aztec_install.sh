@@ -26,6 +26,7 @@ services:
       - "40400:40400/tcp"
       - "40400:40400/udp"
       - "8080:8080"
+      - "8880:8880"
     volumes:
       - "$HOME/.aztec/alpha-testnet/data/:/data"
 EOF
@@ -189,6 +190,8 @@ while true; do
             read -rp "Enter the new version (default: $version): " new_version
             new_version=${new_version:-$version}
             image_version="aztecprotocol/aztec:$new_version"
+            echo "Updating to version: $new_version"
+            "$HOME/.aztec/bin/aztec-up" "$new_version"
 
             echo "📦 Pulling new image: $image_version..."
             docker image pull "$image_version"
