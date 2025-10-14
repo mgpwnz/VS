@@ -1,224 +1,236 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# ===============================================
 # Aztec Sequencer Node Manager
-# Version: 2.0.5
-# English comments and prompts
-# Supports: .env management, keystore management, run/update/uninstall
+# Unified keystore.json + .env interactive script
+# ===============================================
 
-set -euo pipefail
+AZTEC_DIR="aztec"
+KEYS_DIR="$AZTEC_DIR/keys"
+DATA_DIR="$AZTEC_DIR/data"
+ENV_FILE="$AZTEC_DIR/.env"
+KEYSTORE_FILE="$KEYS_DIR/keystore.json"
+DOCKER_COMPOSE_FILE="$AZTEC_DIR/docker-compose.yml"
 
-# Config
-VERSION="2.0.3"
-PROJECT_DIR="$HOME/aztec"
-KEYS_DIR="$PROJECT_DIR/keys"
-DATA_DIR="$PROJECT_DIR/data"
-ENV_FILE="$PROJECT_DIR/.env"
-COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
-SERVER_IP="$(wget -qO- eth0.me || echo "127.0.0.1")"
-DEFAULT_IMAGE="aztecprotocol/aztec:${VERSION}"
-EDITOR="${EDITOR:-nano}"
-
-# Ensure project dirs exist (but do not overwrite)
-ensure_dirs() {
-  mkdir -p "$PROJECT_DIR" "$KEYS_DIR" "$DATA_DIR"
+# -----------------------------------------------
+# Helper: show menu header
+# -----------------------------------------------
+function header() {
+  clear
+  echo "==============================================="
+  echo "        🚀 AZTEC SEQUENCER MANAGER"
+  echo "==============================================="
 }
 
-# ---------- .env utilities ----------
-create_env_interactive() {
-  echo "Create new .env (will overwrite if exists). Press ENTER to accept empty value."
-  read -rp "Enter Ethereum execution RPC URL(s) (comma-separated): " ETHEREUM_HOSTS
-  read -rp "Enter L1 consensus (Beacon) URL(s) (comma-separated): " L1_CONSENSUS_HOST_URLS
-  read -rp "P2P_IP [default: detected $SERVER_IP]: " P2P_IP_INPUT
-  P2P_IP="${P2P_IP_INPUT:-$SERVER_IP}"
+# -----------------------------------------------
+# Create directories and .env file
+# -----------------------------------------------
+function prepare_env() {
+  header
+  echo "Preparing directories and .env file..."
+  mkdir -p "$KEYS_DIR" "$DATA_DIR"
+
+  if [ -f "$ENV_FILE" ]; then
+    echo ".env already exists."
+    echo "1) Show current .env"
+    echo "2) Edit parameters"
+    echo "3) Regenerate from scratch"
+    echo "4) Back"
+    read -p "Select an option: " opt
+    case $opt in
+      1)
+        echo
+        cat "$ENV_FILE"
+        read -p "Press enter to return..."
+        return
+        ;;
+      2)
+        edit_env
+        return
+        ;;
+      3)
+        rm "$ENV_FILE"
+        ;;
+      4)
+        return
+        ;;
+      *)
+        echo "Invalid option."
+        return
+        ;;
+    esac
+  fi
+
+  echo "Creating new .env configuration..."
+  read -p "Enter Ethereum hosts (comma-separated): " ETHEREUM_HOSTS
+  read -p "Enter L1 Consensus URLs (comma-separated): " L1_CONSENSUS_HOST_URLS
+  read -p "Enter your public IP (P2P_IP): " P2P_IP
+  read -p "Enter P2P port [40400]: " P2P_PORT
+  P2P_PORT=${P2P_PORT:-40400}
+  read -p "Enter Aztec port [8080]: " AZTEC_PORT
+  AZTEC_PORT=${AZTEC_PORT:-8080}
+  read -p "Enter Aztec admin port [8880]: " AZTEC_ADMIN_PORT
+  AZTEC_ADMIN_PORT=${AZTEC_ADMIN_PORT:-8880}
+
   cat > "$ENV_FILE" <<EOF
 DATA_DIRECTORY=./data
 KEY_STORE_DIRECTORY=./keys
 LOG_LEVEL=info
-ETHEREUM_HOSTS=${ETHEREUM_HOSTS}
-L1_CONSENSUS_HOST_URLS=${L1_CONSENSUS_HOST_URLS}
-P2P_IP=${P2P_IP}
-P2P_PORT=40400
-AZTEC_PORT=8080
-AZTEC_ADMIN_PORT=8880
+ETHEREUM_HOSTS=$ETHEREUM_HOSTS
+L1_CONSENSUS_HOST_URLS=$L1_CONSENSUS_HOST_URLS
+P2P_IP=$P2P_IP
+P2P_PORT=$P2P_PORT
+AZTEC_PORT=$AZTEC_PORT
+AZTEC_ADMIN_PORT=$AZTEC_ADMIN_PORT
 EOF
-  echo "✅ Created $ENV_FILE"
+
+  echo ".env created successfully!"
+  read -p "Press enter to return..."
 }
 
-show_env() {
-  if [[ -f "$ENV_FILE" ]]; then
-    echo "---- $ENV_FILE ----"
-    sed -n '1,200p' "$ENV_FILE"
-    echo "-------------------"
+# -----------------------------------------------
+# Edit existing .env
+# -----------------------------------------------
+function edit_env() {
+  echo
+  echo "Editing .env..."
+  nano "$ENV_FILE"
+  echo "Saved."
+  read -p "Press enter to return..."
+}
+
+# -----------------------------------------------
+# Manage unified keystore.json
+# -----------------------------------------------
+function manage_keystore() {
+  header
+  mkdir -p "$KEYS_DIR"
+
+  if [ -f "$KEYSTORE_FILE" ]; then
+    echo "Keystore found: $KEYSTORE_FILE"
+    echo "1) Show existing validators"
+    echo "2) Add new validator"
+    echo "3) Edit existing validator"
+    echo "4) Regenerate file (overwrite)"
+    echo "5) Back"
+    read -p "Select option: " kopt
+
+    case $kopt in
+      1)
+        jq '.' "$KEYSTORE_FILE"
+        read -p "Press enter to return..."
+        ;;
+      2)
+        add_validator
+        ;;
+      3)
+        edit_validator
+        ;;
+      4)
+        rm "$KEYSTORE_FILE"
+        create_keystore
+        ;;
+      5)
+        return
+        ;;
+      *)
+        echo "Invalid option."
+        ;;
+    esac
   else
-    echo "No .env present at $ENV_FILE"
+    create_keystore
   fi
 }
 
-edit_env() {
-  if [[ ! -f "$ENV_FILE" ]]; then
-    echo ".env not found — create it first."
-    read -rp "Create .env now? [y/N]: " r
-    [[ "$r" =~ ^[Yy]$ ]] && create_env_interactive || return
-  fi
-  "$EDITOR" "$ENV_FILE"
-  echo "✅ Edited $ENV_FILE"
-}
+# -----------------------------------------------
+# Create new keystore.json
+# -----------------------------------------------
+function create_keystore() {
+  echo "Creating new keystore.json..."
+  validators=()
 
-env_menu() {
   while true; do
-    echo
-    echo "=== .env management ==="
-    PS3="Select .env action: "
-    options=("Show .env" "Edit .env" "Regenerate .env (overwrite)" "Back")
-    select choice in "${options[@]}"; do
-      case $REPLY in
-        1) show_env; break ;;
-        2) edit_env; break ;;
-        3)
-           read -rp "This will overwrite existing .env. Continue? [y/N]: " resp
-           if [[ "$resp" =~ ^[Yy]$ ]]; then
-             create_env_interactive
-           else
-             echo "Cancelled."
-           fi
-           break
-           ;;
-        4) return ;;
-        *) echo "Invalid choice"; break ;;
-      esac
-    done
+    read -p "Enter attester private key (or leave empty to stop): " attester
+    [ -z "$attester" ] && break
+    read -p "Enter fee recipient address: " fee
+    validators+=("{\"attester\": \"$attester\", \"feeRecipient\": \"$fee\"}")
   done
-}
 
-# ---------- Keystore utilities ----------
-list_keystores() {
-  echo "Keystore files in $KEYS_DIR:"
-  ls -1 "$KEYS_DIR"/keystore*.json 2>/dev/null || echo "(none)"
-}
+  local joined=$(IFS=,; echo "${validators[*]}")
 
-show_keystore_file() {
-  list_keystores
-  read -rp "Enter filename to view (or blank to cancel): " file
-  [[ -z "$file" ]] && return
-  # allow both absolute and name
-  if [[ ! -f "$file" ]]; then
-    file="$KEYS_DIR/$file"
-  fi
-  if [[ -f "$file" ]]; then
-    echo "---- $file ----"
-    jq . "$file" 2>/dev/null || sed -n '1,200p' "$file"
-    echo "----------------"
-  else
-    echo "File not found: $file"
-  fi
-}
-
-add_single_keystore() {
-  read -rp "Enter attester (private key, 0x...): " att
-  [[ "$att" != 0x* ]] && att="0x$att"
-  read -rp "Enter feeRecipient (address, 0x...): " fee
-  cat > "$KEYS_DIR/keystore.json" <<EOF
+  cat > "$KEYSTORE_FILE" <<EOF
 {
   "schemaVersion": 1,
   "validators": [
-    {
-      "attester": "$att",
-      "feeRecipient": "$fee"
-    }
+    $joined
   ]
 }
 EOF
-  echo "✅ Created $KEYS_DIR/keystore.json"
+  echo "Keystore created successfully!"
+  read -p "Press enter to return..."
 }
 
-add_sequencer_keystore() {
-  read -rp "Enter sequencer id (short suffix, e.g. a or node01): " id
-  read -rp "Enter attester (private key, 0x...): " att
-  [[ "$att" != 0x* ]] && att="0x$att"
-  read -rp "Enter feeRecipient (address, 0x...): " fee
-  file="$KEYS_DIR/keystore-sequencer-$id.json"
-  cat > "$file" <<EOF
-{
-  "schemaVersion": 1,
-  "validators": [
-    {
-      "attester": "$att",
-      "feeRecipient": "$fee"
-    }
-  ]
-}
-EOF
-  echo "✅ Created $file"
+# -----------------------------------------------
+# Add new validator to existing keystore
+# -----------------------------------------------
+function add_validator() {
+  echo "Adding new validator..."
+  read -p "Enter attester private key: " attester
+  read -p "Enter fee recipient address: " fee
+
+  tmpfile=$(mktemp)
+  jq ".validators += [{\"attester\": \"$attester\", \"feeRecipient\": \"$fee\"}]" "$KEYSTORE_FILE" > "$tmpfile" && mv "$tmpfile" "$KEYSTORE_FILE"
+
+  echo "Validator added successfully!"
+  read -p "Press enter to return..."
 }
 
-edit_keystore_file() {
-  list_keystores
-  read -rp "Enter keystore filename to edit (e.g. keystore.json or keystore-sequencer-a.json) or blank to cancel: " fname
-  [[ -z "$fname" ]] && return
-  # normalize to full path if necessary
-  if [[ ! -f "$fname" ]]; then
-    fname="$KEYS_DIR/$fname"
-  fi
-  if [[ -f "$fname" ]]; then
-    "$EDITOR" "$fname"
-    echo "✅ Edited $fname"
-  else
-    echo "File not found: $fname"
-  fi
-}
-
-keystore_menu() {
-  ensure_dirs
-  while true; do
-    echo
-    echo "=== Keystore management ==="
-    PS3="Select keystore action: "
-    options=("List keystores" "Show keystore" "Add single keystore" "Add sequencer keystore" "Edit keystore" "Back")
-    select opt in "${options[@]}"; do
-      case $REPLY in
-        1) list_keystores; break ;;
-        2) show_keystore_file; break ;;
-        3) add_single_keystore; break ;;
-        4)
-           while true; do
-             add_sequencer_keystore
-             read -rp "Add another sequencer keystore? [y/N]: " more
-             [[ ! "$more" =~ ^[Yy]$ ]] && break
-           done
-           break
-           ;;
-        5) edit_keystore_file; break ;;
-        6) return ;;
-        *) echo "Invalid option"; break ;;
-      esac
-    done
-  done
-}
-
-# ---------- Docker Compose generation ----------
-generate_compose() {
-  # require .env present
-  if [[ ! -f "$ENV_FILE" ]]; then
-    echo ".env missing; generate .env first."
-    return 1
+# -----------------------------------------------
+# Edit existing validator
+# -----------------------------------------------
+function edit_validator() {
+  count=$(jq '.validators | length' "$KEYSTORE_FILE")
+  if [ "$count" -eq 0 ]; then
+    echo "No validators found."
+    read -p "Press enter to return..."
+    return
   fi
 
-  # read .env into current environment, but don't export persistently
-  # using a subshell 'source' to avoid polluting
-  # read lines like KEY=VAL
-  set -o allexport
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +o allexport
+  echo "Existing validators:"
+  jq -r '.validators | to_entries[] | "\(.key): \(.value.attester) -> \(.value.feeRecipient)"' "$KEYSTORE_FILE"
+  read -p "Select index to edit (0-$((count-1))): " idx
+  [ -z "$idx" ] && return
+  read -p "Enter new attester key (leave blank to keep): " new_att
+  read -p "Enter new fee recipient (leave blank to keep): " new_fee
 
-  # choose image
-  read -rp "Enter Docker image (default: $DEFAULT_IMAGE): " image
-  image=${image:-$DEFAULT_IMAGE}
+  tmpfile=$(mktemp)
+  jq --argjson i "$idx" --arg att "$new_att" --arg fee "$new_fee" '
+    .validators[$i].attester = (if $att != "" then $att else .validators[$i].attester end) |
+    .validators[$i].feeRecipient = (if $fee != "" then $fee else .validators[$i].feeRecipient end)
+  ' "$KEYSTORE_FILE" > "$tmpfile" && mv "$tmpfile" "$KEYSTORE_FILE"
 
-  cat > "$COMPOSE_FILE" <<EOF
-version: "3.9"
+  echo "Validator updated successfully!"
+  read -p "Press enter to return..."
+}
+
+# -----------------------------------------------
+# Run Aztec Sequencer Node
+# -----------------------------------------------
+function run_node() {
+  header
+  echo "Starting Aztec Sequencer Node..."
+
+  # Ensure env and keystore exist
+  [ ! -f "$ENV_FILE" ] && prepare_env
+  [ ! -f "$KEYSTORE_FILE" ] && manage_keystore
+
+  echo "✅ Using existing .env and keystore.json"
+
+  # Write docker-compose if missing
+  if [ ! -f "$DOCKER_COMPOSE_FILE" ]; then
+    cat > "$DOCKER_COMPOSE_FILE" <<EOF
 services:
   aztec-sequencer:
-    image: "$image"
+    image: "aztecprotocol/aztec:2.0.2"
     container_name: "aztec-sequencer"
     ports:
       - \${AZTEC_PORT}:\${AZTEC_PORT}
@@ -247,146 +259,35 @@ services:
       --archiver
       --sequencer
       --network testnet
-    restart: unless-stopped
+    restart: always
 EOF
-
-  echo "✅ Generated $COMPOSE_FILE"
-}
-
-# ---------- Run / restart ----------
-run_sequencer_flow() {
-  ensure_dirs
-
-  # .env check
-  if [[ ! -f "$ENV_FILE" ]]; then
-    echo ".env not found. Creating .env now."
-    create_env_interactive
-  else
-    echo ".env found at $ENV_FILE (will be used)."
   fi
 
-  # keystore check
-  existing=$(ls "$KEYS_DIR"/keystore*.json 2>/dev/null || true)
-  if [[ -z "$existing" ]]; then
-    echo "No keystore files found. Creating keystore(s) now."
-    keystore_menu
-  else
-    echo "Keystore files found (will be used):"
-    ls -1 "$KEYS_DIR"/keystore*.json
-    read -rp "Do you want to add or edit keystore files before starting? [y/N]: " kresp
-    if [[ "$kresp" =~ ^[Yy]$ ]]; then
-      keystore_menu
-    fi
-  fi
+  cd "$AZTEC_DIR"
+  docker compose down || true
+  docker compose up -d
+  cd ..
 
-  # generate compose (overwrites)
-  generate_compose
-
-  # stop existing -> start
-  echo "Bringing down previous compose (if any)..."
-  (cd "$PROJECT_DIR" && docker compose down) || true
-
-  echo "Starting compose..."
-  (cd "$PROJECT_DIR" && docker compose up -d)
-
-  echo "✅ Aztec sequencer started (container: aztec-sequencer)."
+  echo "✅ Aztec Sequencer Node is running!"
+  read -p "Press enter to return..."
 }
 
-# ---------- Misc utilities ----------
-install_dependencies() {
-  echo "Installing dependencies (docker + common tools)..."
-  sudo apt-get update && sudo apt-get upgrade -y
-  sudo apt-get install -y curl wget jq git lz4 unzip nano
-  # docker install helper (optional)
-  . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh) || true
-  echo "✅ Dependencies installed (or attempted)."
-}
-
-view_logs() {
-  echo "Tailing logs for aztec-sequencer (Ctrl+C to stop)..."
-  docker logs -f aztec-sequencer --tail 200
-}
-
-check_sync() {
-  echo "Querying L2 tip number from local sequencer RPC (http://localhost:8080)..."
-  curl -s -X POST -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
-    http://localhost:8080 | jq -r ".result.proven.number"
-}
-
-update_node_flow() {
-  ensure_dirs
-  read -rp "Enter new image version (tag only, e.g. 2.0.3) or full image: " newimg
-  if [[ -z "$newimg" ]]; then
-    echo "No image supplied; aborting."
-    return
-  fi
-  # allow user to pass full image or tag
-  if [[ "$newimg" =~ ^aztecprotocol/aztec: ]]; then
-    image="$newimg"
-  else
-    image="aztecprotocol/aztec:${newimg}"
-  fi
-  echo "Updating compose to image: $image"
-  # regenerate compose with new image
-  # inject image as first arg to generate_compose
-  # temporary set DEFAULT_IMAGE
-  DEFAULT_IMAGE_OLD="$DEFAULT_IMAGE"
-  DEFAULT_IMAGE="$image"
-  generate_compose
-  DEFAULT_IMAGE="$DEFAULT_IMAGE_OLD"
-  # restart stack
-  (cd "$PROJECT_DIR" && docker compose down) || true
-  (cd "$PROJECT_DIR" && docker compose up -d)
-  echo "✅ Updated and restarted with $image"
-}
-
-uninstall_flow() {
-  read -rp "This will stop containers and remove $PROJECT_DIR. Continue? [y/N]: " resp
-  if [[ "$resp" =~ ^[Yy]$ ]]; then
-    (cd "$PROJECT_DIR" && docker compose down -v) || true
-    rm -rf "$PROJECT_DIR"
-    echo "✅ Removed project directory and containers."
-  else
-    echo "Cancelled."
-  fi
-}
-
-# ---------- Main menu ----------
-main_menu() {
-  PS3="Select an action: "
-  options=(
-    "Install dependencies"
-    ".env management"
-    "Keystore management"
-    "Run Sequencer Node (down -> up)"
-    "View Logs"
-    "Check Sync Status"
-    "Update Node (change image)"
-    "Uninstall (remove project)"
-    "Exit"
-  )
-
-  while true; do
-    echo
-    echo "==== Aztec Sequencer Manager (v${VERSION}) ===="
-    select opt in "${options[@]}"; do
-      case $REPLY in
-        1) install_dependencies; break ;;
-        2) env_menu; break ;;
-        3) keystore_menu; break ;;
-        4) run_sequencer_flow; break ;;
-        5) view_logs; break ;;
-        6) check_sync; break ;;
-        7) update_node_flow; break ;;
-        8) uninstall_flow; break ;;
-        9) echo "Bye."; exit 0 ;;
-        *) echo "Invalid selection"; break ;;
-      esac
-    done
-  done
-}
-
-# Entrypoint
-ensure_dirs
-main_menu
+# -----------------------------------------------
+# Main menu
+# -----------------------------------------------
+while true; do
+  header
+  echo "1) Prepare environment (.env)"
+  echo "2) Manage keystore.json"
+  echo "3) Run Sequencer Node"
+  echo "4) Exit"
+  echo "-----------------------------------------------"
+  read -p "Select an action: " action
+  case $action in
+    1) prepare_env ;;
+    2) manage_keystore ;;
+    3) run_node ;;
+    4) exit 0 ;;
+    *) echo "Invalid option."; sleep 1 ;;
+  esac
+done
