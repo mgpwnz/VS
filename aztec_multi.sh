@@ -1,107 +1,122 @@
 #!/bin/bash
-# ================================================
-#   Aztec Sequencer Node Management Script
-#   Version: 2.0.4
-#   Fully compliant with official directory layout
-# ================================================
-
 version="2.0.3"
 SERVER_IP=$(wget -qO- eth0.me)
 
-# === Functions ===
-
-# 1️⃣ Create standard directories
 prepare_directories() {
-    if [[ -d "$HOME/aztec/data" && -d "$HOME/aztec/keys" ]]; then
-        read -p "Directories already exist. Recreate? This will delete old data! [y/N]: " resp
-        if [[ "$resp" =~ ^[Yy]$ ]]; then
-            rm -rf "$HOME/aztec/data" "$HOME/aztec/keys"
-        else
-            echo "✅ Skipping directory creation."
-            return
-        fi
+    PROJECT_DIR="$HOME/aztec"
+    KEY_DIR="$PROJECT_DIR/keys"
+    DATA_DIR="$PROJECT_DIR/data"
+
+    mkdir -p "$KEY_DIR" "$DATA_DIR"
+
+    ENV_FILE="$PROJECT_DIR/.env"
+    if [[ -f "$ENV_FILE" ]]; then
+        echo ".env file already exists at $ENV_FILE"
+        read -p "Overwrite? [y/N]: " resp
+        [[ ! "$resp" =~ ^[Yy]$ ]] && return
     fi
-    mkdir -p "$HOME/aztec/data" "$HOME/aztec/keys"
-    echo "✅ Directories created at ~/aztec/data and ~/aztec/keys"
-}
 
-# 2️⃣ Generate .env (official schema)
-generate_env() {
-    echo "Generating .env..."
-    read -p "Enter Ethereum execution RPC URL(s): " ETHEREUM_HOSTS
-    read -p "Enter Beacon consensus URL(s): " L1_CONSENSUS_HOST_URLS
+    read -p "Enter L1 execution endpoint(s) (comma separated): " RPC_URL
+    read -p "Enter L1 consensus endpoint(s) (comma separated): " BEACON_URL
 
-    cat > "$HOME/aztec/.env" <<EOF
+    cat > "$ENV_FILE" <<EOF
 DATA_DIRECTORY=./data
 KEY_STORE_DIRECTORY=./keys
 LOG_LEVEL=info
-ETHEREUM_HOSTS=${ETHEREUM_HOSTS}
-L1_CONSENSUS_HOST_URLS=${L1_CONSENSUS_HOST_URLS}
-P2P_IP=${SERVER_IP}
+ETHEREUM_HOSTS=$RPC_URL
+L1_CONSENSUS_HOST_URLS=$BEACON_URL
+P2P_IP=$SERVER_IP
 P2P_PORT=40400
 AZTEC_PORT=8080
 AZTEC_ADMIN_PORT=8880
 EOF
 
-    echo "✅ .env file created at ~/aztec/.env"
+    echo "✅ Directories and .env prepared."
 }
 
-# 3️⃣ Create keystore(s)
 generate_keystore() {
-    mkdir -p "$HOME/aztec/keys"
-    echo "Select keystore type:"
-    select opt in "Single keystore" "Multiple sequencers"; do
-        case $opt in
-        "Single keystore")
-            read -p "Enter attester (private key): " attester
-            [[ "$attester" != 0x* ]] && attester="0x$attester"
-            read -p "Enter fee recipient (EVM address): " feeRecipient
+    KEY_DIR="$HOME/aztec/keys"
+    mkdir -p "$KEY_DIR"
 
-            cat > "$HOME/aztec/keys/keystore.json" <<EOF
-{
-  "schemaVersion": 1,
-  "validators": [
-    {
-      "attester": "$attester",
-      "feeRecipient": "$feeRecipient"
-    }
-  ]
-}
-EOF
-            echo "✅ Created ~/aztec/keys/keystore.json"
-            break
+    existing=$(ls "$KEY_DIR"/*.json 2>/dev/null)
+    if [[ -n "$existing" ]]; then
+        echo "Existing keystore files:"
+        ls -1 "$KEY_DIR"/*.json
+        read -p "Add new keystore or overwrite? [add/overwrite/skip]: " resp
+        case $resp in
+        overwrite)
+            rm -f "$KEY_DIR"/*.json
             ;;
-        "Multiple sequencers")
-            while true; do
-                read -p "Enter sequencer ID (e.g., a/b/c): " name
-                read -p "Enter attester (private key): " attester
-                [[ "$attester" != 0x* ]] && attester="0x$attester"
-                read -p "Enter fee recipient address: " feeRecipient
-                cat > "$HOME/aztec/keys/keystore-sequencer-${name}.json" <<EOF
-{
-  "schemaVersion": 1,
-  "validators": [
-    {
-      "attester": "$attester",
-      "feeRecipient": "$feeRecipient"
-    }
-  ]
-}
-EOF
-                echo "✅ Created keystore-sequencer-${name}.json"
-                read -p "Add another sequencer? (y/n): " cont
-                [[ "$cont" =~ ^[Nn]$ ]] && break
-            done
-            break
+        skip)
+            return
             ;;
         esac
+    fi
+
+    while true; do
+        echo "Select keystore type:"
+        select opt in "Single keystore" "Multiple sequencers" "Done"; do
+            case $opt in
+            "Single keystore")
+                read -p "Enter attester (private key): " attester
+                [[ "$attester" != 0x* ]] && attester="0x$attester"
+                read -p "Enter fee recipient (EVM address): " feeRecipient
+                cat > "$KEY_DIR/keystore.json" <<EOF
+{
+  "schemaVersion": 1,
+  "validators": [
+    {
+      "attester": "$attester",
+      "feeRecipient": "$feeRecipient"
+    }
+  ]
+}
+EOF
+                echo "✅ Created $KEY_DIR/keystore.json"
+                break
+                ;;
+            "Multiple sequencers")
+                while true; do
+                    read -p "Enter sequencer ID (e.g., a/b/c): " name
+                    read -p "Enter attester (private key): " attester
+                    [[ "$attester" != 0x* ]] && attester="0x$attester"
+                    read -p "Enter fee recipient address: " feeRecipient
+                    cat > "$KEY_DIR/keystore-sequencer-${name}.json" <<EOF
+{
+  "schemaVersion": 1,
+  "validators": [
+    {
+      "attester": "$attester",
+      "feeRecipient": "$feeRecipient"
+    }
+  ]
+}
+EOF
+                    echo "✅ Created $KEY_DIR/keystore-sequencer-${name}.json"
+                    read -p "Add another sequencer? (y/n): " cont
+                    [[ "$cont" =~ ^[Nn]$ ]] && break
+                done
+                break
+                ;;
+            "Done")
+                return
+                ;;
+            *)
+                echo "Invalid option."
+                ;;
+            esac
+        done
     done
 }
 
-# 4️⃣ Docker Compose (official format)
-generate_compose() {
-    local image_version=${1:-"aztecprotocol/aztec:$version"}
-    cat > "$HOME/aztec/docker-compose.yml" <<EOF
+generate_docker_compose() {
+    PROJECT_DIR="$HOME/aztec"
+    source "$PROJECT_DIR/.env"
+
+    read -rp "Enter Docker image version (default: aztecprotocol/aztec:$version): " image_version
+    image_version=${image_version:-aztecprotocol/aztec:$version}
+
+    cat > "$PROJECT_DIR/docker-compose.yml" <<EOF
 services:
   aztec-sequencer:
     image: "$image_version"
@@ -141,102 +156,22 @@ networks:
   aztec:
     name: aztec
 EOF
-    echo "✅ docker-compose.yml generated at ~/aztec/docker-compose.yml"
 }
 
-# 5️⃣ Install dependencies
-install_dependencies() {
-    echo "🔧 Installing system dependencies..."
-    sudo apt-get update && sudo apt-get upgrade -y
-    sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \
-        autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \
-        bsdmainutils ncdu unzip
-    . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
-}
+run_node() {
+    PROJECT_DIR="$HOME/aztec"
+    cd "$PROJECT_DIR" || { echo "Cannot enter project directory"; exit 1; }
 
-# 6️⃣ Install Aztec CLI
-install_aztec_cli() {
-    echo "⬇️ Installing Aztec CLI..."
-    curl -sL https://install.aztec.network | bash || { echo "❌ Aztec CLI installation failed"; exit 1; }
-
-    AZTEC_DIR="$HOME/.aztec/bin"
-    if ! grep -Fxq "export PATH=\"\\$PATH:$AZTEC_DIR\"" "$HOME/.bashrc"; then
-        echo "export PATH=\"\\$PATH:$AZTEC_DIR\"" >>"$HOME/.bashrc"
-    fi
-    echo "✅ CLI installed. Reload shell with 'source ~/.bashrc'"
-}
-
-# 7️⃣ Run Sequencer Node (with directories/env check)
-run_sequencer() {
-    prepare_directories
-
-    cd "$HOME/aztec" || exit 1
-
-    if [[ ! -f "$HOME/aztec/.env" ]]; then
-        echo "❌ .env file не знайдено. Створимо його зараз..."
-        generate_env
-    fi
-
-    source "$HOME/aztec/.env"
-
-    # Check for keystore files
-    if [[ ! -d "$HOME/aztec/keys" || -z $(ls -A "$HOME/aztec/keys") ]]; then
-        echo "❌ Keystore files не знайдено. Створимо їх зараз..."
-        generate_keystore
-    fi
-
-    # Prompt for Docker image
-    read -rp "Enter Docker image version (default: aztecprotocol/aztec:$version): " image_ver
-    image_ver=${image_ver:-"aztecprotocol/aztec:$version"}
-
-    generate_compose "$image_ver"
-
-    echo "🚀 Starting Aztec Sequencer Node..."
-    docker compose up -d
-    echo "✅ Node started successfully!"
-}
-
-# 8️⃣ Logs, status, update, uninstall
-view_logs() { docker logs -f aztec-sequencer --tail 100; }
-
-check_sync() {
-    echo "Fetching L2 tip number..."
-    curl -s -X POST -H 'Content-Type: application/json' \
-        -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
-        http://localhost:8080 | jq -r ".result.proven.number"
-}
-
-update_node() {
-    cd "$HOME/aztec" || exit 1
-    read -rp "Enter new version (default: $version): " new_version
-    new_version=${new_version:-$version}
-    image_version="aztecprotocol/aztec:$new_version"
-    echo "⬆️ Updating to $new_version..."
-    "$HOME/.aztec/bin/aztec-up" "$new_version"
-    docker image pull "$image_version"
     docker compose down || true
-    generate_compose "$image_version"
     docker compose up -d
-    echo "✅ Updated to version $new_version!"
+    echo "✅ Aztec Sequencer Node is running"
 }
 
-uninstall_node() {
-    read -rp "Remove all data and containers? [y/N]: " resp
-    if [[ "$resp" =~ ^[Yy]$ ]]; then
-        docker compose -f "$HOME/aztec/docker-compose.yml" down -v || true
-        rm -rf "$HOME/aztec"
-        echo "✅ Aztec Node removed."
-    else
-        echo "❌ Cancelled."
-    fi
-}
-
-# === Menu ===
+# Menu
 PS3='Select an action: '
 options=(
     "Install dependencies"
-    "Install Aztec CLI"
-    "Generate .env"
+    "Prepare directories + .env"
     "Generate keystore(s)"
     "Run Sequencer Node"
     "View Logs"
@@ -249,17 +184,63 @@ options=(
 while true; do
     select opt in "${options[@]}"; do
         case $opt in
-        "Install dependencies") install_dependencies; break ;;
-        "Install Aztec CLI") install_aztec_cli; break ;;
-        "Generate .env") generate_env; break ;;
-        "Generate keystore(s)") generate_keystore; break ;;
-        "Run Sequencer Node") run_sequencer; break ;;
-        "View Logs") view_logs; break ;;
-        "Check Sync Status") check_sync; break ;;
-        "Update Node") update_node; break ;;
-        "Uninstall Node") uninstall_node; break ;;
-        "Exit") echo "👋 Goodbye!"; exit 0 ;;
-        *) echo "Invalid option"; break ;;
+        "Install dependencies")
+            echo "Updating system and installing packages..."
+            sudo apt-get update && sudo apt-get upgrade -y
+            sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \
+                autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \
+                bsdmainutils ncdu unzip
+            . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
+            break
+            ;;
+        "Prepare directories + .env")
+            prepare_directories
+            break
+            ;;
+        "Generate keystore(s)")
+            generate_keystore
+            break
+            ;;
+        "Run Sequencer Node")
+            prepare_directories
+            generate_keystore
+            generate_docker_compose
+            run_node
+            break
+            ;;
+        "View Logs")
+            docker logs -f aztec-sequencer --tail 100
+            break
+            ;;
+        "Check Sync Status")
+            curl -s -X POST -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+                http://localhost:8080 | jq -r ".result.proven.number"
+            break
+            ;;
+        "Update Node")
+            read -rp "Enter new image version: " new_version
+            PROJECT_DIR="$HOME/aztec"
+            cd "$PROJECT_DIR" || exit
+            docker compose down || true
+            docker pull "aztecprotocol/aztec:$new_version"
+            generate_docker_compose
+            run_node
+            break
+            ;;
+        "Uninstall Node")
+            read -rp "Wipe all data and remove Aztec project directory? [y/N] " resp
+            [[ "$resp" =~ ^[Yy]$ ]] && rm -rf "$HOME/aztec"
+            docker compose down || true
+            echo "✅ Aztec Sequencer Node removed"
+            break
+            ;;
+        "Exit")
+            exit 0
+            ;;
+        *)
+            echo "Invalid option."
+            ;;
         esac
     done
 done
