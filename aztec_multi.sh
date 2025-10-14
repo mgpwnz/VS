@@ -1,9 +1,8 @@
 #!/bin/bash
 # ================================================
 #   Aztec Sequencer Node Management Script
-#   Version: 2.0.3
+#   Version: 2.0.4
 #   Fully compliant with official directory layout
-#   https://docs.aztec.network
 # ================================================
 
 version="2.0.3"
@@ -13,8 +12,17 @@ SERVER_IP=$(wget -qO- eth0.me)
 
 # 1️⃣ Create standard directories
 prepare_directories() {
+    if [[ -d "$HOME/aztec/data" && -d "$HOME/aztec/keys" ]]; then
+        read -p "Directories already exist. Recreate? This will delete old data! [y/N]: " resp
+        if [[ "$resp" =~ ^[Yy]$ ]]; then
+            rm -rf "$HOME/aztec/data" "$HOME/aztec/keys"
+        else
+            echo "✅ Skipping directory creation."
+            return
+        fi
+    fi
     mkdir -p "$HOME/aztec/data" "$HOME/aztec/keys"
-    cd "$HOME/aztec" || exit 1
+    echo "✅ Directories created at ~/aztec/data and ~/aztec/keys"
 }
 
 # 2️⃣ Generate .env (official schema)
@@ -158,11 +166,26 @@ install_aztec_cli() {
     echo "✅ CLI installed. Reload shell with 'source ~/.bashrc'"
 }
 
-# 7️⃣ Run Sequencer Node
+# 7️⃣ Run Sequencer Node (with directories/env check)
 run_sequencer() {
+    prepare_directories
+
     cd "$HOME/aztec" || exit 1
+
+    if [[ ! -f "$HOME/aztec/.env" ]]; then
+        echo "❌ .env file не знайдено. Створимо його зараз..."
+        generate_env
+    fi
+
     source "$HOME/aztec/.env"
 
+    # Check for keystore files
+    if [[ ! -d "$HOME/aztec/keys" || -z $(ls -A "$HOME/aztec/keys") ]]; then
+        echo "❌ Keystore files не знайдено. Створимо їх зараз..."
+        generate_keystore
+    fi
+
+    # Prompt for Docker image
     read -rp "Enter Docker image version (default: aztecprotocol/aztec:$version): " image_ver
     image_ver=${image_ver:-"aztecprotocol/aztec:$version"}
 
@@ -213,7 +236,6 @@ PS3='Select an action: '
 options=(
     "Install dependencies"
     "Install Aztec CLI"
-    "Prepare directories"
     "Generate .env"
     "Generate keystore(s)"
     "Run Sequencer Node"
@@ -224,19 +246,20 @@ options=(
     "Exit"
 )
 
-select opt in "${options[@]}"; do
-    case $opt in
-    "Install dependencies") install_dependencies ;;
-    "Install Aztec CLI") install_aztec_cli ;;
-    "Prepare directories") prepare_directories ;;
-    "Generate .env") generate_env ;;
-    "Generate keystore(s)") generate_keystore ;;
-    "Run Sequencer Node") run_sequencer ;;
-    "View Logs") view_logs ;;
-    "Check Sync Status") check_sync ;;
-    "Update Node") update_node ;;
-    "Uninstall Node") uninstall_node ;;
-    "Exit") echo "👋 Goodbye!"; exit 0 ;;
-    *) echo "Invalid option" ;;
-    esac
+while true; do
+    select opt in "${options[@]}"; do
+        case $opt in
+        "Install dependencies") install_dependencies; break ;;
+        "Install Aztec CLI") install_aztec_cli; break ;;
+        "Generate .env") generate_env; break ;;
+        "Generate keystore(s)") generate_keystore; break ;;
+        "Run Sequencer Node") run_sequencer; break ;;
+        "View Logs") view_logs; break ;;
+        "Check Sync Status") check_sync; break ;;
+        "Update Node") update_node; break ;;
+        "Uninstall Node") uninstall_node; break ;;
+        "Exit") echo "👋 Goodbye!"; exit 0 ;;
+        *) echo "Invalid option"; break ;;
+        esac
+    done
 done
