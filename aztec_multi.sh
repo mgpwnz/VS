@@ -1,11 +1,7 @@
 #!/bin/bash
-# Aztec Sequencer Node Management Script
 version="2.0.3"
-
-# Determine server's external IP
 SERVER_IP=$(wget -qO- eth0.me)
 
-# Functions
 prepare_directories() {
     PROJECT_DIR="$HOME/aztec"
     KEY_DIR="$PROJECT_DIR/keys"
@@ -77,6 +73,7 @@ generate_keystore() {
 }
 EOF
                 echo "✅ Created $KEY_DIR/keystore.json"
+                break
                 ;;
             "Multiple sequencers")
                 while true; do
@@ -99,9 +96,13 @@ EOF
                     read -p "Add another sequencer? (y/n): " cont
                     [[ "$cont" =~ ^[Nn]$ ]] && break
                 done
+                break
                 ;;
             "Done")
                 return
+                ;;
+            *)
+                echo "Invalid option."
                 ;;
             esac
         done
@@ -161,10 +162,7 @@ run_node() {
     PROJECT_DIR="$HOME/aztec"
     cd "$PROJECT_DIR" || { echo "Cannot enter project directory"; exit 1; }
 
-    # Stop existing container
     docker compose down || true
-
-    # Start node
     docker compose up -d
     echo "✅ Aztec Sequencer Node is running"
 }
@@ -192,7 +190,6 @@ while true; do
             sudo apt-get install -y curl iptables build-essential git wget lz4 jq make gcc nano automake \
                 autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang \
                 bsdmainutils ncdu unzip
-            # Install Docker if missing
             . <(wget -qO- https://raw.githubusercontent.com/mgpwnz/VS/main/docker.sh)
             break
             ;;
