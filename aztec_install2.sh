@@ -1,7 +1,5 @@
 #!/bin/bash
-# Aztec Sequencer Node Management Script (v2.2.0)
-# Підтримує мультивалідаторну конфігурацію з вибором COINBASE
-version="2.2.0"
+version="2.0.3"
 
 SERVER_IP=$(wget -qO- eth0.me)
 
