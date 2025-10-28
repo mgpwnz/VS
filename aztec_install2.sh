@@ -31,7 +31,7 @@ services:
       P2P_IP: ${SERVER_IP}
       LOG_LEVEL: info
     entrypoint: >
-      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network testnet --node --archiver --sequencer'
+      sh -c 'node --no-warnings /usr/src/yarn-project/aztec/dest/bin/index.js start --network testnet --node --archiver --sequencer --snapshots-url https://snapshots.aztec.graphops.xyz/files/'
     ports:
       - "40400:40400/tcp"
       - "40400:40400/udp"
