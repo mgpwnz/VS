@@ -368,28 +368,80 @@ view_logs() {
 }
 
 check_status() {
+  require_curl || return 1
+  require_jq   || return 1
+
   say "Container status:"
-  if docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | grep -F "$CONTAINER_NAME"; then
-    :
-  else
+  if ! docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | grep -F "$CONTAINER_NAME"; then
     warn "No container named $CONTAINER_NAME found."
   fi
 
+  # env/порти
   if [[ -f "$ENV_FILE" ]]; then
     # shellcheck disable=SC1090
     source "$ENV_FILE"
-    say "Attempting admin health check on 127.0.0.1:${AZTEC_ADMIN_PORT}…"
-    if command -v curl >/dev/null 2>&1; then
-      (curl -fsS "http://127.0.0.1:${AZTEC_ADMIN_PORT}/health" \
-        || curl -fsS "http://127.0.0.1:${AZTEC_ADMIN_PORT}/status" \
-        || true) | sed -e 's/^/  /'
-    fi
-    say "Open ports (matching P2P/AZTEC/ADMIN):"
-    ss -lntup | grep -E ":(?:$P2P_PORT|$AZTEC_PORT|$AZTEC_ADMIN_PORT)\b" || true
   else
-    warn "No $ENV_FILE — cannot probe ports."
+    warn "No $ENV_FILE — using defaults."
+    AZTEC_PORT="${AZTEC_PORT:-8080}"
+    AZTEC_ADMIN_PORT="${AZTEC_ADMIN_PORT:-8880}"
   fi
+
+  local RPC="http://127.0.0.1:${AZTEC_PORT}"
+  local ADMIN="http://127.0.0.1:${AZTEC_ADMIN_PORT}"
+
+  say "Admin health (${ADMIN}/health):"
+  (curl -fsS --max-time 5 "${ADMIN}/health" || echo "<unavailable>") | sed 's/^/  /'
+
+  # L2 tips → proven.number
+  say "L2 tips (proven.number) via node_getL2Tips:"
+  local PROVEN
+  PROVEN="$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+    "${RPC}" | jq -r '.result.proven.number // empty')"
+  if [[ -n "$PROVEN" ]]; then
+    echo "  proven.number: ${PROVEN}"
+  else
+    echo "  proven.number: <unavailable>"
+  fi
+
+  # /status (компактно)
+  say "/status:"
+  local STATUS_JSON
+  STATUS_JSON="$(curl -s --max-time 5 "${RPC}/status" || true)"
+  if [[ -n "$STATUS_JSON" ]]; then
+    echo "$STATUS_JSON" | jq 'del(.peers, .logs, .debug, .metrics) | .'
+  else
+    echo "  <unavailable>"
+  fi
+
+  # відкриті порти
+  say "Open ports (P2P/AZTEC/ADMIN):"
+  ss -lntup | grep -E ":(?:${P2P_PORT:-40400}|${AZTEC_PORT}|${AZTEC_ADMIN_PORT})\b" || true
 }
+
+watch_sync() {
+  require_curl || return 1
+  require_jq   || return 1
+
+  # env/порт
+  if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+  fi
+  local RPC="http://127.0.0.1:${AZTEC_PORT:-8080}"
+
+  say "Watching proven.number (Ctrl+C to stop)…"
+  while true; do
+    local PROVEN
+    PROVEN="$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+      "${RPC}" | jq -r '.result.proven.number // empty')"
+    local ts; ts="$(date '+%F %T')"
+    printf "%s  proven.number: %s\n" "$ts" "${PROVEN:-<unavailable>}"
+    sleep 5
+  done
+}
+
 
 update_node() {
   require_docker
@@ -448,10 +500,12 @@ options=(
   "Run Sequencer Node"
   "View Logs"
   "Check Sync Status"
+  "Watch Sync"
   "Update Node"
   "Uninstall Node"
   "Exit"
 )
+
 
 mkdir -p "$APP_DIR"
 
@@ -465,6 +519,7 @@ while true; do
       "Run Sequencer Node")                run_node; break ;;
       "View Logs")                         view_logs; break ;;
       "Check Sync Status")                 check_status; break ;;
+      "Watch Sync")                        watch_sync; break ;;
       "Update Node")                       update_node; break ;;
       "Uninstall Node")                    uninstall_node; break ;;
       "Exit")                              echo "Goodbye!"; exit 0 ;;
