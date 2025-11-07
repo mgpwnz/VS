@@ -132,13 +132,15 @@ install_aztec_tools() {
   mkdir -p "$APP_DIR"/{keys,data}
 
   # Generate validator keys directly into the keys dir
-  local AZTEC_FEE_RECIPIENT_ADDRESS MNEMONIC
-  read -r -p "Enter AZTEC FEE RECIPIENT ADDRESS (0x…): " AZTEC_FEE_RECIPIENT_ADDRESS
-  read -s -r -p "Enter MNEMONIC (will not echo): " MNEMONIC; echo
+  local AZTEC_FEE_RECIPIENT_ADDRESS MNEMONIC COINBASE
+  read -r -p "Enter AZTEC FEE RECIPIENT PRIVATE KEY (0x…): " AZTEC_FEE_RECIPIENT_ADDRESS
+  read -r -p "Enter MNEMONIC : " MNEMONIC
+  read -r -p "Enter WALLET ADDRESS: " COINBASE
 
   "$AZTEC_DIR/aztec" validator-keys new \
     --fee-recipient "$AZTEC_FEE_RECIPIENT_ADDRESS" \
     --mnemonic "$MNEMONIC" \
+    --coinbase $COINBASE \
     --data-dir "$APP_DIR/keys" \
     --file keystore.json
 
