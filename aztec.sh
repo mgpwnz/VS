@@ -211,7 +211,7 @@ _next_sequencer_filename() {
 }
 
 generate_keys_multi() {
-  say "Generate multiple validator keys (unique by coinbase/f ee-recipient)…"
+  say "Generate multiple validator keys (unique by coinbase / fee-recipient)…"
 
   local AZTEC_BIN="$HOME/.aztec/bin/aztec"
   if [[ ! -x "$AZTEC_BIN" ]]; then
@@ -221,11 +221,9 @@ generate_keys_multi() {
   require_jq || return 1
 
   local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
-
-  # 1) Show existing
   list_keys
 
-  # Build a set of existing coinbase addresses (lowercased)
+  # Collect existing coinbase/fee addresses
   declare -A EXIST
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
@@ -234,7 +232,6 @@ generate_keys_multi() {
   done
   shopt -u nullglob
 
-  # 2) How many to create?
   local n
   read -r -p "How many keys to create? [default 1]: " n
   n="${n:-1}"
@@ -242,21 +239,34 @@ generate_keys_multi() {
     err "Invalid number."; return 1
   fi
 
-  # 3) Per-key inputs
-  say "You will be asked for fee-recipient (coinbase) and mnemonic for each key."
+  say "You will be asked for:"
+  echo "  • FEE-RECIPIENT PRIVATE KEY — this is your Aztec validator private key (starts with 0x...)"
+  echo "  • COINBASE ADDRESS — your public wallet address (starts with 0x...)"
+  echo "  • MNEMONIC — 12/24-word seed phrase for validator identity"
+  echo
+
   for ((i=1; i<=n; i++)); do
     echo
     say "Key $i of $n"
-    local FEE MN
-    read -r -p "  Enter FEE-RECIPIENT ADDRESS (0x…): " FEE
-    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
-      err "  Invalid address format. Skipping."; continue
+    local FEE MN COINBASE
+
+    read -r -p "  Enter FEE-RECIPIENT PRIVATE KEY (0x… or plain hex): " FEE
+    [[ "$FEE" != 0x* ]] && FEE="0x$FEE"
+    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+      err "  Invalid PRIVATE KEY format. Must be 64 hex characters. Skipping."; continue
     fi
     local FEE_lc; FEE_lc="$(tr 'A-F' 'a-f' <<<"$FEE")"
     if [[ -n "${EXIST[$FEE_lc]+x}" ]]; then
-      warn "  Address already exists in keystores. Skipping."
+      warn "  This private key's fee-recipient already exists. Skipping."
       continue
     fi
+
+    read -r -p "  Enter COINBASE ADDRESS (0x… or plain hex): " COINBASE
+    [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
+    if [[ ! "$COINBASE" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+      err "  Invalid COINBASE address format. Skipping."; continue
+    fi
+
     read -s -r -p "  Enter MNEMONIC (will not echo): " MN; echo
     if [[ -z "$MN" ]]; then
       err "  Empty mnemonic. Skipping."; continue
@@ -266,6 +276,7 @@ generate_keys_multi() {
 
     "$AZTEC_BIN" validator-keys new \
       --fee-recipient "$FEE" \
+      --coinbase "$COINBASE" \
       --mnemonic "$MN" \
       --data-dir "$KEY_DIR" \
       --file "$(basename "$OUT")"
@@ -274,7 +285,9 @@ generate_keys_multi() {
       local got; got="$(_extract_coinbase "$OUT" | tr 'A-F' 'a-f')"
       if [[ -n "$got" ]]; then
         EXIST["$got"]=1
-        say "  ✅ Created $(basename "$OUT")  ($got)"
+        say "  ✅ Created $(basename "$OUT")"
+        echo "     Fee-Recipient (privkey): $FEE"
+        echo "     Coinbase (address):      $COINBASE"
       else
         warn "  Created $(basename "$OUT"), but coinbase not detected."
       fi
