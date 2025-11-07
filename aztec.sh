@@ -13,6 +13,27 @@ NETWORK_NAME="aztec"
 
 # Detect primary public IP
 SERVER_IP="$(wget -qO- eth0.me || curl -fsSL ifconfig.me || echo 127.0.0.1)"
+# extarctors for keystore fields
+_extract_coinbase() {
+  local f="$1"
+  jq -r '.validators[0].coinbase // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
+}
+
+_extract_fee_recipient() {
+  local f="$1"
+  jq -r '.validators[0].feeRecipient // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
+}
+
+_extract_attester_eth() {
+  local f="$1"
+  jq -r '.validators[0].attester.eth // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
+}
+
+_extract_bls_secret() {
+  local f="$1"
+  # у твоїй схемі bls = приватний BLS ключ
+  jq -r '.validators[0].attester.bls // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
+}
 
 # --- helpers ---
 say()  { printf "\n\033[1m%s\033[0m\n" "$*"; }
@@ -521,7 +542,7 @@ add_l1_validator() {
   local AZTEC_BIN="$HOME/.aztec/bin/aztec"
   [[ -x "$AZTEC_BIN" ]] || { err "Aztec CLI not found. Run 'Install Aztec Tools' first."; return 1; }
 
-  # Load environment
+  # беремо RPC з .env
   if [[ -f "$ENV_FILE" ]]; then
     # shellcheck disable=SC1090
     source "$ENV_FILE"
@@ -529,21 +550,22 @@ add_l1_validator() {
     err ".env file not found. Run Install Aztec Tools first."; return 1
   fi
 
-  # Path to keystore dir
   local KEY_DIR="$(_key_dir_resolve)"
   say "Keystore directory: $KEY_DIR"
 
-  read -r -p "Enter PRIVATE KEY (same used for approval): " PRIVATE_KEY
+  # EVM приватний ключ, яким ти підписуєш транзакцію реєстрації валідатора
+  read -r -p "Enter SEQUENCER PRIVATE KEY (0x… used for approve/join): " PRIVATE_KEY
   [[ "$PRIVATE_KEY" != 0x* ]] && PRIVATE_KEY="0x$PRIVATE_KEY"
+
+  # withdrawer = coinbase (запитуємо в тебе)
   read -r -p "Enter COINBASE address (0x…): " COINBASE
   [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
 
-  # Find corresponding JSON by coinbase
-  local FILE MATCH
+  # шукаємо файл keystore*, який відповідає цьому coinbase
+  local MATCH
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
-    cb="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
-    if [[ "${cb}" == "$(tr 'A-F' 'a-f' <<<"$COINBASE")" ]]; then
+    if [[ "$(tr 'A-F' 'a-f' <<<"$(_extract_coinbase "$f")")" == "$(tr 'A-F' 'a-f' <<<"$COINBASE")" ]]; then
       MATCH="$f"
       break
     fi
@@ -551,37 +573,52 @@ add_l1_validator() {
   shopt -u nullglob
 
   if [[ -z "$MATCH" ]]; then
-    err "No keystore file found matching $COINBASE"; return 1
+    err "No keystore file found with coinbase = $COINBASE"
+    return 1
   fi
 
-  say "Found keystore: $(basename "$MATCH")"
-
-  # Extract attester + bls keys
-  local ETH_ATTESTER_ADDRESS BLS_ATTESTER_PRIV_KEY
-  ETH_ATTESTER_ADDRESS="$(jq -r '.validators[0].attester?.address // .attester?.address // empty' "$MATCH")"
-  BLS_ATTESTER_PRIV_KEY="$(jq -r '.validators[0].blsSecretKey // .blsSecretKey // empty' "$MATCH")"
-
-  if [[ -z "$ETH_ATTESTER_ADDRESS" || -z "$BLS_ATTESTER_PRIV_KEY" ]]; then
-    err "Could not extract attester or blsSecretKey from $MATCH"; return 1
+  # attester.eth = адреса атестера (EVM-адреса, публічна)
+  local ETH_ATTESTER_ADDRESS
+  ETH_ATTESTER_ADDRESS="$(_extract_attester_eth "$MATCH")"
+  if [[ -z "$ETH_ATTESTER_ADDRESS" || "$ETH_ATTESTER_ADDRESS" == "null" ]]; then
+    err "attester.eth not found in $(basename "$MATCH")"
+    return 1
   fi
 
-  local CMD="$AZTEC_BIN add-l1-validator \
---l1-rpc-urls \"$ETHEREUM_HOSTS\" \
---network testnet \
---private-key \"$PRIVATE_KEY\" \
---attester \"$ETH_ATTESTER_ADDRESS\" \
---withdrawer \"$COINBASE\" \
---bls-secret-key \"$BLS_ATTESTER_PRIV_KEY\" \
---rollup 0xebd99ff0ff6677205509ae73f93d0ca52ac85d67"
+  # bls = приватний BLS (з твого файлу)
+  local BLS_ATTESTER_PRIV_KEY
+  BLS_ATTESTER_PRIV_KEY="$(_extract_bls_secret "$MATCH")"
+  if [[ -z "$BLS_ATTESTER_PRIV_KEY" || "$BLS_ATTESTER_PRIV_KEY" == "null" ]]; then
+    err "attester.bls (BLS private key) not found in $(basename "$MATCH")"
+    return 1
+  fi
 
-  echo
-  say "Executing validator registration:"
-  echo "$CMD"
-  echo
-  eval "$CMD"
+  # валідації формату (не обов'язкові але бажані)
+  if [[ ! "$PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+    warn "Sequencer PRIVATE KEY does not look like 0x + 64 hex chars. Continuing anyway…"
+  fi
+  if [[ ! "$BLS_ATTESTER_PRIV_KEY" =~ ^0x[0-9a-fA-F]+$ ]]; then
+    warn "BLS key isn't hex-looking. Continuing anyway…"
+  fi
 
-  say "✅ L1 validator registered successfully."
+  say "Submitting L1 validator registration (secrets will NOT be echoed)…"
+  "$AZTEC_BIN" add-l1-validator \
+    --l1-rpc-urls "$ETHEREUM_HOSTS" \
+    --network testnet \
+    --private-key "$PRIVATE_KEY" \
+    --attester "$ETH_ATTESTER_ADDRESS" \
+    --withdrawer "$COINBASE" \
+    --bls-secret-key "$BLS_ATTESTER_PRIV_KEY" \
+    --rollup 0xebd99ff0ff6677205509ae73f93d0ca52ac85d67
+
+  local rc=$?
+  if [[ $rc -eq 0 ]]; then
+    say "✅ L1 validator registered successfully."
+  else
+    err "Registration failed (exit code $rc). Check inputs and logs."
+  fi
 }
+
 
 # --- menu ---
 PS3='Select an action: '
