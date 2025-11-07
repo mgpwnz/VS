@@ -380,20 +380,9 @@ check_status() {
   else
     warn "No $ENV_FILE — using defaults."
     AZTEC_PORT="${AZTEC_PORT:-8080}"
-    AZTEC_ADMIN_PORT="${AZTEC_ADMIN_PORT:-8880}"
   fi
 
   local RPC="http://127.0.0.1:${AZTEC_PORT}"
-  local ADMIN="http://127.0.0.1:${AZTEC_ADMIN_PORT}"
-
-  say "Admin health (${ADMIN}/health):"
-  local health
-  health="$(curl -fsS --max-time 5 "${ADMIN}/health" 2>/dev/null || true)"
-  if [[ -z "$health" ]]; then
-    echo "  <unavailable>"
-  else
-    echo "$health" | jq . 2>/dev/null || echo "  $health"
-  fi
 
   say "L2 tips (proven.number):"
   local PROVEN
@@ -412,7 +401,7 @@ check_status() {
   fi
 
   say "Open ports:"
-  ss -lntup | grep -E ":(?:${P2P_PORT:-40400}|${AZTEC_PORT}|${AZTEC_ADMIN_PORT})\b" || true
+  ss -lntup | grep -E ":(?:${P2P_PORT:-40400}|${AZTEC_PORT})\b" || true
 }
 
 
