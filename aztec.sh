@@ -158,15 +158,32 @@ _key_dir_resolve() {
   printf "%s" "$KEY_DIR"
 }
 
+# --- precise extractors for your keystore schema ---
+
 _extract_coinbase() {
+  # Повертає перший validators[*].coinbase (або верхньорівневий .coinbase як fallback)
   local f="$1"
-  local addr
-  addr="$(jq -r '(.feeRecipient // .coinbase // .address // .validator?.coinbase // .validator?.feeRecipient // .account?.address // empty)' "$f" 2>/dev/null || true)"
-  if [[ -z "$addr" || "$addr" == "null" ]]; then
-    addr="$(grep -aoE '0x[0-9a-fA-F]{40}' "$f" | head -n1 || true)"
-  fi
-  printf "%s" "${addr:-}"
+  jq -r '
+    (
+      .validators? // [] 
+      | map(select(has("coinbase")) | .coinbase)
+      | first
+    ) // .coinbase // empty
+  ' "$f" 2>/dev/null | awk 'NR==1{print}'
 }
+
+_extract_fee_recipient() {
+  # Повертає перший validators[*].feeRecipient (або верхньорівневий .feeRecipient як fallback)
+  local f="$1"
+  jq -r '
+    (
+      .validators? // []
+      | map(select(has("feeRecipient")) | .feeRecipient)
+      | first
+    ) // .feeRecipient // empty
+  ' "$f" 2>/dev/null | awk 'NR==1{print}'
+}
+
 
 list_keys() {
   require_jq || return 1
@@ -176,12 +193,16 @@ list_keys() {
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
     any=1
-    local cb; cb="$(_extract_coinbase "$f")"
-    printf "  %-28s %s\n" "$(basename "$f")" "${cb:-<addr not found>}"
+    local cb fr
+    cb="$(_extract_coinbase "$f")"
+    fr="$(_extract_fee_recipient "$f")"
+    printf "  %-28s coinbase: %s\n"  "$(basename "$f")" "${cb:-<not found>}"
+    [[ -n "$fr" ]] && printf "  %-28s feeRecp:  %s\n" "" "$fr"
   done
   shopt -u nullglob
   [[ $any -eq 0 ]] && echo "  (none)"
 }
+
 
 secure_keys() {
   local d="$(_key_dir_resolve)"
@@ -224,13 +245,15 @@ generate_keys_multi() {
   list_keys
 
   # Collect existing coinbase/fee addresses
-  declare -A EXIST
-  shopt -s nullglob
-  for f in "$KEY_DIR"/keystore*.json; do
+ # Build a set of existing coinbase addresses (lowercased)
+    declare -A EXIST
+    shopt -s nullglob
+    for f in "$KEY_DIR"/keystore*.json; do
     cb="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
     [[ -n "$cb" ]] && EXIST["$cb"]=1
-  done
-  shopt -u nullglob
+    done
+    shopt -u nullglob
+
 
   local n
   read -r -p "How many keys to create? [default 1]: " n
