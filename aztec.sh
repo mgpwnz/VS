@@ -24,16 +24,18 @@ _extract_fee_recipient() {
   jq -r '.validators[0].feeRecipient // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
 }
 
-_extract_attester_eth() {
+_extract_attester_eth_priv() {
+  # У твоєму форматі тут зберігається PRIVKEY, не адреса
   local f="$1"
   jq -r '.validators[0].attester.eth // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
 }
 
 _extract_bls_secret() {
   local f="$1"
-  # у твоїй схемі bls = приватний BLS ключ
+  # У твоєму файлі це приватний BLS
   jq -r '.validators[0].attester.bls // empty' "$f" 2>/dev/null | awk 'NR==1{print}'
 }
+
 
 # --- helpers ---
 say()  { printf "\n\033[1m%s\033[0m\n" "$*"; }
@@ -207,19 +209,32 @@ list_keys() {
   require_jq || return 1
   local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
   say "Keystores in: $KEY_DIR"
-  local any=0
+
+  local CAST="$HOME/.foundry/bin/cast"
   shopt -s nullglob
+  local any=0
   for f in "$KEY_DIR"/keystore*.json; do
     any=1
-    local cb fr
+    local cb fr evm_priv evm_addr
     cb="$(_extract_coinbase "$f")"
     fr="$(_extract_fee_recipient "$f")"
-    printf "  %-28s coinbase: %s\n"  "$(basename "$f")" "${cb:-<not found>}"
-    [[ -n "$fr" ]] && printf "  %-28s feeRecp:  %s\n" "" "$fr"
+    evm_priv="$(_extract_attester_eth_priv "$f")"
+
+    if [[ -n "$evm_priv" ]]; then
+      [[ "$evm_priv" != 0x* ]] && evm_priv="0x$evm_priv"
+      if [[ -x "$CAST" && "$evm_priv" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        evm_addr="$("$CAST" wallet address --private-key "$evm_priv" 2>/dev/null || true)"
+      fi
+    fi
+
+    printf "  %-28s coinbase: %s\n"  "$(basename "$f")" "${cb:-<n/a>}"
+    printf "  %-28s feeRecp:  %s\n"  "" "${fr:-<n/a>}"
+    printf "  %-28s att.eth:  %s\n"  "" "${evm_addr:-<derive with foundry>}"
   done
   shopt -u nullglob
   [[ $any -eq 0 ]] && echo "  (none)"
 }
+
 
 
 secure_keys() {
@@ -542,7 +557,7 @@ add_l1_validator() {
   local AZTEC_BIN="$HOME/.aztec/bin/aztec"
   [[ -x "$AZTEC_BIN" ]] || { err "Aztec CLI not found. Run 'Install Aztec Tools' first."; return 1; }
 
-  # беремо RPC з .env
+  # RPC з .env
   if [[ -f "$ENV_FILE" ]]; then
     # shellcheck disable=SC1090
     source "$ENV_FILE"
@@ -553,53 +568,50 @@ add_l1_validator() {
   local KEY_DIR="$(_key_dir_resolve)"
   say "Keystore directory: $KEY_DIR"
 
-  # EVM приватний ключ, яким ти підписуєш транзакцію реєстрації валідатора
+  # EVM приватник, яким підписуєш L1-транзакцію
   read -r -p "Enter SEQUENCER PRIVATE KEY (0x… used for approve/join): " PRIVATE_KEY
   [[ "$PRIVATE_KEY" != 0x* ]] && PRIVATE_KEY="0x$PRIVATE_KEY"
 
-  # withdrawer = coinbase (запитуємо в тебе)
+  # withdrawer = coinbase
   read -r -p "Enter COINBASE address (0x…): " COINBASE
   [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
 
-  # шукаємо файл keystore*, який відповідає цьому coinbase
+  # знайти keystore по coinbase
   local MATCH
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
     if [[ "$(tr 'A-F' 'a-f' <<<"$(_extract_coinbase "$f")")" == "$(tr 'A-F' 'a-f' <<<"$COINBASE")" ]]; then
-      MATCH="$f"
-      break
+      MATCH="$f"; break
     fi
   done
   shopt -u nullglob
+  [[ -n "$MATCH" ]] || { err "No keystore file with coinbase = $COINBASE"; return 1; }
 
-  if [[ -z "$MATCH" ]]; then
-    err "No keystore file found with coinbase = $COINBASE"
-    return 1
+  # 1) дістаємо EVM PRIV з keystore, 2) деривимо з нього адресу через Foundry
+  local ETH_ATTESTER_PRIV ETH_ATTESTER_ADDRESS CAST
+  ETH_ATTESTER_PRIV="$(_extract_attester_eth_priv "$MATCH")"
+  [[ -n "$ETH_ATTESTER_PRIV" ]] || { err "attester.eth (EVM privkey) not found in $(basename "$MATCH")"; return 1; }
+  [[ "$ETH_ATTESTER_PRIV" != 0x* ]] && ETH_ATTESTER_PRIV="0x$ETH_ATTESTER_PRIV"
+  if [[ ! "$ETH_ATTESTER_PRIV" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+    err "attester.eth in keystore is not a valid 32-byte hex private key."; return 1
   fi
 
-  # attester.eth = адреса атестера (EVM-адреса, публічна)
-  local ETH_ATTESTER_ADDRESS
-  ETH_ATTESTER_ADDRESS="$(_extract_attester_eth "$MATCH")"
-  if [[ -z "$ETH_ATTESTER_ADDRESS" || "$ETH_ATTESTER_ADDRESS" == "null" ]]; then
-    err "attester.eth not found in $(basename "$MATCH")"
-    return 1
+  CAST="$HOME/.foundry/bin/cast"
+  if [[ ! -x "$CAST" ]]; then
+    warn "Foundry not found. Installing…"
+    curl -L https://foundry.paradigm.xyz | bash
+    "$HOME/.foundry/bin/foundryup"
+  fi
+  ETH_ATTESTER_ADDRESS="$("$HOME/.foundry/bin/cast" wallet address --private-key "$ETH_ATTESTER_PRIV" 2>/dev/null)"
+  if [[ ! "$ETH_ATTESTER_ADDRESS" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+    err "Failed to derive attester address from private key."; return 1
   fi
 
-  # bls = приватний BLS (з твого файлу)
+  # BLS приватний з keystore
   local BLS_ATTESTER_PRIV_KEY
   BLS_ATTESTER_PRIV_KEY="$(_extract_bls_secret "$MATCH")"
-  if [[ -z "$BLS_ATTESTER_PRIV_KEY" || "$BLS_ATTESTER_PRIV_KEY" == "null" ]]; then
-    err "attester.bls (BLS private key) not found in $(basename "$MATCH")"
-    return 1
-  fi
-
-  # валідації формату (не обов'язкові але бажані)
-  if [[ ! "$PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-    warn "Sequencer PRIVATE KEY does not look like 0x + 64 hex chars. Continuing anyway…"
-  fi
-  if [[ ! "$BLS_ATTESTER_PRIV_KEY" =~ ^0x[0-9a-fA-F]+$ ]]; then
-    warn "BLS key isn't hex-looking. Continuing anyway…"
-  fi
+  [[ -n "$BLS_ATTESTER_PRIV_KEY" ]] || { err "attester.bls (BLS privkey) not found in $(basename "$MATCH")"; return 1; }
+  [[ "$BLS_ATTESTER_PRIV_KEY" != 0x* ]] && BLS_ATTESTER_PRIV_KEY="0x$BLS_ATTESTER_PRIV_KEY"
 
   say "Submitting L1 validator registration (secrets will NOT be echoed)…"
   "$AZTEC_BIN" add-l1-validator \
@@ -618,6 +630,7 @@ add_l1_validator() {
     err "Registration failed (exit code $rc). Check inputs and logs."
   fi
 }
+
 
 
 # --- menu ---
