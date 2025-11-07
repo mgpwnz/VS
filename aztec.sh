@@ -3,7 +3,7 @@
 # Install deps, Aztec CLI, run/manage Sequencer, logs, status, update, uninstall.
 set -Eeuo pipefail
 
-version="2.1.0"
+version="2.1.2"
 
 APP_DIR="$HOME/aztec-sequencer"
 ENV_FILE="$APP_DIR/.env"
