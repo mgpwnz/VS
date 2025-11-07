@@ -33,12 +33,6 @@ require_docker() {
   fi
 }
 
-require_jq() {
-  if ! command -v jq >/dev/null 2>&1; then
-    err "jq is required. Run 'Install dependencies' first."; return 1
-  fi
-}
-
 aztec_up() {
   local v="${1:-$version}"
   if [[ -x "$HOME/.aztec/bin/aztec-up" ]]; then
