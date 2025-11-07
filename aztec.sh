@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Aztec Sequencer Node Management Script
-# Install deps, Aztec CLI, run/manage Sequencer, logs, status, update, uninstall.
+# Install deps, Aztec CLI, run/manage Sequencer, keys (list/multi-gen), logs, status, update, uninstall.
 set -Eeuo pipefail
 
 version="2.1.2"
@@ -15,9 +15,9 @@ NETWORK_NAME="aztec"
 SERVER_IP="$(wget -qO- eth0.me || curl -fsSL ifconfig.me || echo 127.0.0.1)"
 
 # --- helpers ---
-say() { printf "\n\033[1m%s\033[0m\n" "$*"; }
+say()  { printf "\n\033[1m%s\033[0m\n" "$*"; }
 warn() { printf "\n\033[33m⚠ %s\033[0m\n" "$*"; }
-err() { printf "\n\033[31m❌ %s\033[0m\n" "$*"; }
+err()  { printf "\n\033[31m❌ %s\033[0m\n" "$*"; }
 
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -30,9 +30,19 @@ require_docker() {
   fi
 }
 
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    err "jq is required. Run 'Install dependencies' first."; return 1
+  fi
+}
+
 aztec_up() {
   local v="${1:-$version}"
-  "$HOME/.aztec/bin/aztec-up" "$v"
+  if [[ -x "$HOME/.aztec/bin/aztec-up" ]]; then
+    "$HOME/.aztec/bin/aztec-up" "$v"
+  else
+    warn "aztec-up not found; install tools first."
+  fi
 }
 
 write_env() {
@@ -123,38 +133,168 @@ install_aztec_tools() {
   fi
 
   AZTEC_DIR="$HOME/.aztec/bin"
-  # add to PATH if not present
   if ! grep -Fq "$AZTEC_DIR" "$HOME/.bashrc"; then
     echo "export PATH=\"\$PATH:$AZTEC_DIR\"" >> "$HOME/.bashrc"
   fi
   say "Aztec CLI added to PATH (reload shell or 'source ~/.bashrc')."
 
   mkdir -p "$APP_DIR"/{keys,data}
-
-  # Generate validator keys directly into the keys dir
-  local AZTEC_FEE_RECIPIENT_ADDRESS MNEMONIC COINBASE
-  read -r -p "Enter AZTEC FEE RECIPIENT PRIVATE KEY (0x…): " AZTEC_FEE_RECIPIENT_ADDRESS
-  read -r -p "Enter MNEMONIC : " MNEMONIC
-  read -r -p "Enter WALLET ADDRESS: " COINBASE
-
-  "$AZTEC_DIR/aztec" validator-keys new \
-    --fee-recipient "$AZTEC_FEE_RECIPIENT_ADDRESS" \
-    --mnemonic "$MNEMONIC" \
-    --coinbase $COINBASE \
-    --data-dir "$APP_DIR/keys" \
-    --file keystore.json
-
   [[ -f "$ENV_FILE" ]] || write_env
-  say "Aztec tools installed and keystore generated."
+  say "Aztec tools installed."
 }
 
+# ---------- Keys utilities ----------
+_key_dir_resolve() {
+  mkdir -p "$APP_DIR"/{keys,data}
+  local KEY_DIR="$APP_DIR/keys"
+  if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    local rel="${KEY_STORE_DIRECTORY:-./keys}"
+    rel="${rel#./}"
+    KEY_DIR="$APP_DIR/$rel"
+  fi
+  mkdir -p "$KEY_DIR"
+  printf "%s" "$KEY_DIR"
+}
+
+_extract_coinbase() {
+  local f="$1"
+  local addr
+  addr="$(jq -r '(.feeRecipient // .coinbase // .address // .validator?.coinbase // .validator?.feeRecipient // .account?.address // empty)' "$f" 2>/dev/null || true)"
+  if [[ -z "$addr" || "$addr" == "null" ]]; then
+    addr="$(grep -aoE '0x[0-9a-fA-F]{40}' "$f" | head -n1 || true)"
+  fi
+  printf "%s" "${addr:-}"
+}
+
+list_keys() {
+  require_jq || return 1
+  local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
+  say "Keystores in: $KEY_DIR"
+  local any=0
+  shopt -s nullglob
+  for f in "$KEY_DIR"/keystore*.json; do
+    any=1
+    local cb; cb="$(_extract_coinbase "$f")"
+    printf "  %-28s %s\n" "$(basename "$f")" "${cb:-<addr not found>}"
+  done
+  shopt -u nullglob
+  [[ $any -eq 0 ]] && echo "  (none)"
+}
+
+secure_keys() {
+  local d="$(_key_dir_resolve)"
+  chmod 700 "$d"
+  find "$d" -type f -name 'keystore*.json' -exec chmod 600 {} \;
+  say "Keys secured in $d"
+}
+
+_seq_letters() {
+  local n="$1" s="" rem
+  n=$((n))
+  while :; do
+    rem=$(( n % 26 ))
+    s="$(printf "\\$(printf '%03o' $((97+rem)))")$s"
+    n=$(( n / 26 - 1 ))
+    [[ $n -lt 0 ]] && break
+  done
+  printf "%s" "$s"
+}
+
+_next_sequencer_filename() {
+  local KEY_DIR="$(_key_dir_resolve)"
+  local count
+  count="$(ls -1 "$KEY_DIR"/keystore-sequencer-*.json 2>/dev/null | wc -l | tr -d ' ')"
+  local suffix; suffix="$(_seq_letters "$count")"
+  printf "%s/keystore-sequencer-%s.json" "$KEY_DIR" "$suffix"
+}
+
+generate_keys_multi() {
+  say "Generate multiple validator keys (unique by coinbase/f ee-recipient)…"
+
+  local AZTEC_BIN="$HOME/.aztec/bin/aztec"
+  if [[ ! -x "$AZTEC_BIN" ]]; then
+    err "Aztec CLI not found. Run 'Install Aztec Tools' first."
+    return 1
+  fi
+  require_jq || return 1
+
+  local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
+
+  # 1) Show existing
+  list_keys
+
+  # Build a set of existing coinbase addresses (lowercased)
+  declare -A EXIST
+  shopt -s nullglob
+  for f in "$KEY_DIR"/keystore*.json; do
+    cb="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
+    [[ -n "$cb" ]] && EXIST["$cb"]=1
+  done
+  shopt -u nullglob
+
+  # 2) How many to create?
+  local n
+  read -r -p "How many keys to create? [default 1]: " n
+  n="${n:-1}"
+  if ! [[ "$n" =~ ^[0-9]+$ ]] || [[ "$n" -le 0 ]]; then
+    err "Invalid number."; return 1
+  fi
+
+  # 3) Per-key inputs
+  say "You will be asked for fee-recipient (coinbase) and mnemonic for each key."
+  for ((i=1; i<=n; i++)); do
+    echo
+    say "Key $i of $n"
+    local FEE MN
+    read -r -p "  Enter FEE-RECIPIENT ADDRESS (0x…): " FEE
+    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+      err "  Invalid address format. Skipping."; continue
+    fi
+    local FEE_lc; FEE_lc="$(tr 'A-F' 'a-f' <<<"$FEE")"
+    if [[ -n "${EXIST[$FEE_lc]+x}" ]]; then
+      warn "  Address already exists in keystores. Skipping."
+      continue
+    fi
+    read -s -r -p "  Enter MNEMONIC (will not echo): " MN; echo
+    if [[ -z "$MN" ]]; then
+      err "  Empty mnemonic. Skipping."; continue
+    fi
+
+    local OUT; OUT="$(_next_sequencer_filename)"
+
+    "$AZTEC_BIN" validator-keys new \
+      --fee-recipient "$FEE" \
+      --mnemonic "$MN" \
+      --data-dir "$KEY_DIR" \
+      --file "$(basename "$OUT")"
+
+    if [[ -s "$OUT" ]]; then
+      local got; got="$(_extract_coinbase "$OUT" | tr 'A-F' 'a-f')"
+      if [[ -n "$got" ]]; then
+        EXIST["$got"]=1
+        say "  ✅ Created $(basename "$OUT")  ($got)"
+      else
+        warn "  Created $(basename "$OUT"), but coinbase not detected."
+      fi
+    else
+      err "  Generation failed for $(basename "$OUT")."
+    fi
+  done
+
+  echo
+  secure_keys
+  say "Updated keystore list:"
+  list_keys
+}
+
+# ---------- Node controls ----------
 run_node() {
   require_docker
   [[ -f "$ENV_FILE" ]] || { warn "No .env found — creating…"; write_env; }
-  # Update CLI tools to current script version
   aztec_up "$version"
 
-  # optional wipe prompt
   if [[ -d "$APP_DIR/data" ]]; then
     read -r -p "Remove old data directory ($APP_DIR/data)? [y/N] " wipe
     if [[ "${wipe:-N}" =~ ^[Yy]$ ]]; then
@@ -171,7 +311,6 @@ run_node() {
 
   write_compose
 
-  # Stop existing container with our name
   if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER_NAME"; then
     say "Stopping existing container…"
     docker stop "$CONTAINER_NAME" >/dev/null
@@ -268,6 +407,8 @@ PS3='Select an action: '
 options=(
   "Install dependencies"
   "Install Aztec Tools"
+  "List Keys"
+  "Generate Validator Keys (multi)"
   "Run Sequencer Node"
   "View Logs"
   "Check Sync Status"
@@ -281,14 +422,16 @@ mkdir -p "$APP_DIR"
 while true; do
   select opt in "${options[@]}"; do
     case "$opt" in
-      "Install dependencies") install_deps; break ;;
-      "Install Aztec Tools")  install_aztec_tools; break ;;
-      "Run Sequencer Node")   run_node; break ;;
-      "View Logs")            view_logs; break ;;
-      "Check Sync Status")    check_status; break ;;
-      "Update Node")          update_node; break ;;
-      "Uninstall Node")       uninstall_node; break ;;
-      "Exit")                 echo "Goodbye!"; exit 0 ;;
+      "Install dependencies")              install_deps; break ;;
+      "Install Aztec Tools")               install_aztec_tools; break ;;
+      "List Keys")                         list_keys; break ;;
+      "Generate Validator Keys (multi)")   generate_keys_multi; break ;;
+      "Run Sequencer Node")                run_node; break ;;
+      "View Logs")                         view_logs; break ;;
+      "Check Sync Status")                 check_status; break ;;
+      "Update Node")                       update_node; break ;;
+      "Uninstall Node")                    uninstall_node; break ;;
+      "Exit")                              echo "Goodbye!"; exit 0 ;;
       *) echo "Invalid option. Try again." ;;
     esac
   done
