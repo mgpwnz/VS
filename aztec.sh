@@ -320,7 +320,7 @@ generate_keys_multi() {
       continue
     fi
 
-    read -s -r -p "  Enter MNEMONIC (12/24 words, will not echo): " MN; echo
+    read -r -p "  Enter MNEMONIC (12/24 words, will not echo): " MN
     if [[ -z "$MN" ]]; then
       err "  Empty mnemonic. Skipping."; continue
     fi
@@ -531,7 +531,7 @@ install_foundry_and_approve() {
   echo "Spender (GSE):  0xebd99ff0ff6677205509ae73f93d0ca52ac85d67"
   echo "Required:        200000 STAKE"
   echo
-  read -r -p "Enter PRIVATE KEY of sequencer wallet (0x…): " PRIVATE_KEY
+  read -r -p "Enter SEQUENCER PRIVATE KEY (0x…): " PRIVATE_KEY
   [[ "$PRIVATE_KEY" != 0x* ]] && PRIVATE_KEY="0x$PRIVATE_KEY"
 
   local CMD="/root/.foundry/bin/cast send \
