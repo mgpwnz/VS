@@ -18,6 +18,9 @@ SERVER_IP="$(wget -qO- eth0.me || curl -fsSL ifconfig.me || echo 127.0.0.1)"
 say()  { printf "\n\033[1m%s\033[0m\n" "$*"; }
 warn() { printf "\n\033[33m⚠ %s\033[0m\n" "$*"; }
 err()  { printf "\n\033[31m❌ %s\033[0m\n" "$*"; }
+require_curl() { command -v curl >/dev/null 2>&1 || { err "curl is required. Run 'Install dependencies' first."; return 1; }; }
+require_jq()   { command -v jq   >/dev/null 2>&1 || { err "jq is required. Run 'Install dependencies' first.";   return 1; }; }
+
 
 require_docker() {
   if ! command -v docker >/dev/null 2>&1; then
