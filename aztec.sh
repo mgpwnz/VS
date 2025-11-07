@@ -468,6 +468,120 @@ uninstall_node() {
   fi
   say "Uninstall complete."
 }
+install_foundry_and_approve() {
+  say "Installing Foundry CLI (cast/send)..."
+  if [[ ! -x "$HOME/.foundry/bin/foundryup" ]]; then
+    curl -L https://foundry.paradigm.xyz | bash
+  fi
+
+  FOUND="$HOME/.foundry/bin/foundryup"
+  if [[ ! -x "$FOUND" ]]; then
+    err "Foundry installation failed. Aborting."; return 1
+  fi
+
+  # Ensure cast/send tools installed
+  "$FOUND"
+
+  # Load RPC from .env
+  if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+  else
+    err ".env file not found. Run Install Aztec Tools first."; return 1
+  fi
+
+  say "Approve STAKE tokens for Aztec Rollup."
+  echo "Rollup contract: 0x139d2a7a0881e16332d7D1F8DB383A4507E1Ea7A"
+  echo "Spender (GSE):  0xebd99ff0ff6677205509ae73f93d0ca52ac85d67"
+  echo "Required:        200000 STAKE"
+  echo
+  read -r -p "Enter PRIVATE KEY of sequencer wallet (0x…): " PRIVATE_KEY
+  [[ "$PRIVATE_KEY" != 0x* ]] && PRIVATE_KEY="0x$PRIVATE_KEY"
+
+  local CMD="/root/.foundry/bin/cast send \
+0x139d2a7a0881e16332d7D1F8DB383A4507E1Ea7A \
+\"approve(address,uint256)\" \
+0xebd99ff0ff6677205509ae73f93d0ca52ac85d67 \
+200000ether \
+--private-key \"$PRIVATE_KEY\" \
+--rpc-url \"$ETHEREUM_HOSTS\""
+
+  echo
+  say "Executing approve command:"
+  echo "$CMD"
+  echo
+  eval "$CMD"
+  say "✅ STAKE approval sent."
+}
+
+
+add_l1_validator() {
+  say "Registering L1 validator on Aztec testnet..."
+
+  local AZTEC_BIN="$HOME/.aztec/bin/aztec"
+  [[ -x "$AZTEC_BIN" ]] || { err "Aztec CLI not found. Run 'Install Aztec Tools' first."; return 1; }
+
+  # Load environment
+  if [[ -f "$ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+  else
+    err ".env file not found. Run Install Aztec Tools first."; return 1
+  fi
+
+  # Path to keystore dir
+  local KEY_DIR="$(_key_dir_resolve)"
+  say "Keystore directory: $KEY_DIR"
+
+  read -r -p "Enter PRIVATE KEY (same used for approval): " PRIVATE_KEY
+  [[ "$PRIVATE_KEY" != 0x* ]] && PRIVATE_KEY="0x$PRIVATE_KEY"
+  read -r -p "Enter COINBASE address (0x…): " COINBASE
+  [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
+
+  # Find corresponding JSON by coinbase
+  local FILE MATCH
+  shopt -s nullglob
+  for f in "$KEY_DIR"/keystore*.json; do
+    cb="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
+    if [[ "${cb}" == "$(tr 'A-F' 'a-f' <<<"$COINBASE")" ]]; then
+      MATCH="$f"
+      break
+    fi
+  done
+  shopt -u nullglob
+
+  if [[ -z "$MATCH" ]]; then
+    err "No keystore file found matching $COINBASE"; return 1
+  fi
+
+  say "Found keystore: $(basename "$MATCH")"
+
+  # Extract attester + bls keys
+  local ETH_ATTESTER_ADDRESS BLS_ATTESTER_PRIV_KEY
+  ETH_ATTESTER_ADDRESS="$(jq -r '.validators[0].attester?.address // .attester?.address // empty' "$MATCH")"
+  BLS_ATTESTER_PRIV_KEY="$(jq -r '.validators[0].blsSecretKey // .blsSecretKey // empty' "$MATCH")"
+
+  if [[ -z "$ETH_ATTESTER_ADDRESS" || -z "$BLS_ATTESTER_PRIV_KEY" ]]; then
+    err "Could not extract attester or blsSecretKey from $MATCH"; return 1
+  fi
+
+  local CMD="$AZTEC_BIN add-l1-validator \
+--l1-rpc-urls \"$ETHEREUM_HOSTS\" \
+--network testnet \
+--private-key \"$PRIVATE_KEY\" \
+--attester \"$ETH_ATTESTER_ADDRESS\" \
+--withdrawer \"$COINBASE\" \
+--bls-secret-key \"$BLS_ATTESTER_PRIV_KEY\" \
+--rollup 0xebd99ff0ff6677205509ae73f93d0ca52ac85d67"
+
+  echo
+  say "Executing validator registration:"
+  echo "$CMD"
+  echo
+  eval "$CMD"
+
+  say "✅ L1 validator registered successfully."
+}
 
 # --- menu ---
 PS3='Select an action: '
@@ -480,10 +594,13 @@ options=(
   "View Logs"
   "Check Sync Status"
   "Watch Sync"
+  "Approve STAKE for Rollup"
+  "Add L1 Validator"
   "Update Node"
   "Uninstall Node"
   "Exit"
 )
+
 
 
 mkdir -p "$APP_DIR"
@@ -499,6 +616,8 @@ while true; do
       "View Logs")                         view_logs; break ;;
       "Check Sync Status")                 check_status; break ;;
       "Watch Sync")                        watch_sync; break ;;
+      "Approve STAKE for Rollup")          install_foundry_and_approve; break ;;
+      "Add L1 Validator")                  add_l1_validator; break ;;
       "Update Node")                       update_node; break ;;
       "Uninstall Node")                    uninstall_node; break ;;
       "Exit")                              echo "Goodbye!"; exit 0 ;;
