@@ -428,9 +428,6 @@ check_status() {
   else
     echo "$status" | jq . 2>/dev/null || echo "  $status"
   fi
-
-  say "Open ports:"
-  ss -lntup | grep -E ":(?:${P2P_PORT:-40400}|${AZTEC_PORT})\b" || true
 }
 
 
