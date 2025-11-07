@@ -387,34 +387,34 @@ check_status() {
   local ADMIN="http://127.0.0.1:${AZTEC_ADMIN_PORT}"
 
   say "Admin health (${ADMIN}/health):"
-  (curl -fsS --max-time 5 "${ADMIN}/health" || echo "<unavailable>") | sed 's/^/  /'
+  local health
+  health="$(curl -fsS --max-time 5 "${ADMIN}/health" 2>/dev/null || true)"
+  if [[ -z "$health" ]]; then
+    echo "  <unavailable>"
+  else
+    echo "$health" | jq . 2>/dev/null || echo "  $health"
+  fi
 
-  # L2 tips → proven.number
-  say "L2 tips (proven.number) via node_getL2Tips:"
+  say "L2 tips (proven.number):"
   local PROVEN
   PROVEN="$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
     -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
     "${RPC}" | jq -r '.result.proven.number // empty')"
-  if [[ -n "$PROVEN" ]]; then
-    echo "  proven.number: ${PROVEN}"
-  else
-    echo "  proven.number: <unavailable>"
-  fi
+  echo "  ${PROVEN:-<unavailable>}"
 
-  # /status (компактно)
   say "/status:"
-  local STATUS_JSON
-  STATUS_JSON="$(curl -s --max-time 5 "${RPC}/status" || true)"
-  if [[ -n "$STATUS_JSON" ]]; then
-    echo "$STATUS_JSON" | jq 'del(.peers, .logs, .debug, .metrics) | .'
-  else
+  local status
+  status="$(curl -s --max-time 5 "${RPC}/status" 2>/dev/null || true)"
+  if [[ -z "$status" ]]; then
     echo "  <unavailable>"
+  else
+    echo "$status" | jq . 2>/dev/null || echo "  $status"
   fi
 
-  # відкриті порти
-  say "Open ports (P2P/AZTEC/ADMIN):"
+  say "Open ports:"
   ss -lntup | grep -E ":(?:${P2P_PORT:-40400}|${AZTEC_PORT}|${AZTEC_ADMIN_PORT})\b" || true
 }
+
 
 watch_sync() {
   require_curl || return 1
