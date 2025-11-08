@@ -265,7 +265,7 @@ _next_sequencer_filename() {
 }
 
 generate_keys_multi() {
-  say "Generate multiple validator keys (each with its own MNEMONIC, same FEE-RECIPIENT)…"
+  say "Generate multiple validator keys (each with its own MNEMONIC and FEE-RECIPIENT)…"
 
   local AZTEC_BIN="$HOME/.aztec/bin/aztec"
   if [[ ! -x "$AZTEC_BIN" ]]; then
@@ -286,13 +286,6 @@ generate_keys_multi() {
   done
   shopt -u nullglob
 
-  echo
-  read -r -p "Enter COMMON FEE-RECIPIENT PRIVATE KEY (0x… or plain hex): " FEE
-  [[ "$FEE" != 0x* ]] && FEE="0x$FEE"
-  if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-    err "Invalid PRIVATE KEY format (must be 64 hex chars)."; return 1
-  fi
-
   local n
   read -r -p "How many keys to create? [default 1]: " n
   n="${n:-1}"
@@ -300,14 +293,14 @@ generate_keys_multi() {
     err "Invalid number."; return 1
   fi
 
-  say "You will be asked for a new MNEMONIC and COINBASE address for each key."
+  say "You will be asked for a new MNEMONIC, COINBASE and FEE-RECIPIENT for each key."
   echo
 
   for ((i=1; i<=n; i++)); do
     echo
     say "Key $i of $n"
 
-    local COINBASE MN OUT
+    local COINBASE MN OUT FEE
 
     read -r -p "  Enter COINBASE ADDRESS (0x… or plain hex): " COINBASE
     [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
@@ -320,9 +313,15 @@ generate_keys_multi() {
       continue
     fi
 
-    read -r -p "  Enter MNEMONIC (12/24 words, will not echo): " MN
+    read -r -p "  Enter MNEMONIC (12 words): " MN
     if [[ -z "$MN" ]]; then
       err "  Empty mnemonic. Skipping."; continue
+    fi
+
+    read -r -p "  Enter FEE-RECIPIENT PRIVATE KEY (0x… or plain hex): " FEE
+    [[ "$FEE" != 0x* ]] && FEE="0x$FEE"
+    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+      err "  Invalid FEE-RECIPIENT private key format. Skipping."; continue
     fi
 
     OUT="$(_next_sequencer_filename)"
@@ -349,6 +348,7 @@ generate_keys_multi() {
   say "Updated keystore list:"
   list_keys
 }
+
 
 
 # ---------- Node controls ----------
