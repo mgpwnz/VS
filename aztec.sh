@@ -270,14 +270,18 @@ generate_keys_multi() {
   local AZTEC_BIN="$HOME/.aztec/bin/aztec"
   if [[ ! -x "$AZTEC_BIN" ]]; then
     err "Aztec CLI not found. Run 'Install Aztec Tools' first."
-    return 1
+    return 0   # не валимо весь скрипт
   fi
-  require_jq || return 1
+
+  if ! command -v jq >/dev/null 2>&1; then
+    err "jq is required. Run 'Install dependencies' first."
+    return 0
+  fi
 
   local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
   list_keys
 
-  # --- Збираємо існуючі пари (coinbase|feeRecipient), щоб не плодити дублікати ---
+  # --- зібрати вже існуючі пари (coinbase|feeRecipient), щоб не робити дублі ---
   declare -A EXIST
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
@@ -294,8 +298,9 @@ generate_keys_multi() {
   local n
   read -r -p "How many keys to create? [default 1]: " n
   n="${n:-1}"
-  if ! [[ "$n" =~ ^[0-9]+$ ]] || [[ "$n" -le 0 ]]; then
-    err "Invalid number."; return 1
+  if ! [[ "$n" =~ ^[0-9]+$ && "$n" -gt 0 ]]; then
+    err "Invalid number, aborting key generation."
+    return 0
   fi
 
   say "You will be asked for MNEMONIC, COINBASE and FEE-RECIPIENT for each key."
@@ -311,25 +316,28 @@ generate_keys_multi() {
     read -r -p "  Enter COINBASE ADDRESS (0x… or plain hex): " COINBASE
     [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
     if [[ ! "$COINBASE" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
-      err "  Invalid COINBASE address format. Skipping."; continue
+      err "  Invalid COINBASE address format. Skipping this key."
+      continue
     fi
     local cb_lc; cb_lc="$(tr 'A-F' 'a-f' <<<"$COINBASE")"
 
     # --- MNEMONIC ---
     read -r -p "  Enter MNEMONIC (12/24 words): " MN
     if [[ -z "$MN" ]]; then
-      err "  Empty mnemonic. Skipping."; continue
+      err "  Empty mnemonic. Skipping this key."
+      continue
     fi
 
     # --- FEE-RECIPIENT ---
     read -r -p "  Enter FEE-RECIPIENT (0x… or plain hex): " FEE
     [[ "$FEE" != 0x* ]] && FEE="0x$FEE"
     if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]+$ ]]; then
-      err "  Invalid FEE-RECIPIENT format (must be hex). Skipping."; continue
+      err "  Invalid FEE-RECIPIENT format (must be hex). Skipping this key."
+      continue
     fi
     local fee_lc; fee_lc="$(tr 'A-F' 'a-f' <<<"$FEE")"
 
-    # --- перевірка на повний збіг (coinbase + fee-recipient) ---
+    # --- перевірка на дубль пари (coinbase + fee-recipient) ---
     local pair="${cb_lc}|${fee_lc}"
     if [[ -n "${EXIST[$pair]+x}" ]]; then
       warn "  Key with the same COINBASE and FEE-RECIPIENT already exists. Skipping."
@@ -338,12 +346,17 @@ generate_keys_multi() {
 
     OUT="$(_next_sequencer_filename)"
 
-    "$AZTEC_BIN" validator-keys new \
+    # не даємо set -e завалити скрипт, якщо aztec щось поверне ≠0
+    if ! "$AZTEC_BIN" validator-keys new \
       --fee-recipient "$FEE" \
       --coinbase "$COINBASE" \
       --mnemonic "$MN" \
       --data-dir "$KEY_DIR" \
       --file "$(basename "$OUT")"
+    then
+      err "  Generation failed for $(basename "$OUT")."
+      continue
+    fi
 
     if [[ -s "$OUT" ]]; then
       EXIST["$pair"]=1
@@ -351,7 +364,7 @@ generate_keys_multi() {
       echo "     Fee-Recipient: $FEE"
       echo "     Coinbase:      $COINBASE"
     else
-      err "  Generation failed for $(basename "$OUT")."
+      err "  Output file $(basename "$OUT") is empty, something went wrong."
     fi
   done
 
@@ -359,10 +372,9 @@ generate_keys_multi() {
   secure_keys
   say "Updated keystore list:"
   list_keys
+
+  return 0
 }
-
-
-
 
 # ---------- Node controls ----------
 run_node() {
@@ -671,7 +683,7 @@ while true; do
       "Install dependencies")              install_deps; break ;;
       "Install Aztec Tools")               install_aztec_tools; break ;;
       "List Keys")                         list_keys; break ;;
-      "Generate Validator Keys (multi)")   generate_keys_multi; break ;;
+      "Generate Validator Keys (multi)")   generate_keys_multi || true; break ;;
       "Run Sequencer Node")                run_node; break ;;
       "View Logs")                         view_logs; break ;;
       "Check Sync Status")                 check_status; break ;;
