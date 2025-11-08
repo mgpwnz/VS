@@ -277,15 +277,20 @@ generate_keys_multi() {
   local KEY_DIR; KEY_DIR="$(_key_dir_resolve)"
   list_keys
 
-  # Build list of existing coinbase addresses
+  # --- Збираємо існуючі пари (coinbase|feeRecipient), щоб не плодити дублікати ---
   declare -A EXIST
   shopt -s nullglob
   for f in "$KEY_DIR"/keystore*.json; do
-    cb="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
-    [[ -n "$cb" ]] && EXIST["$cb"]=1
+    local cb_existing fr_existing
+    cb_existing="$(_extract_coinbase "$f" | tr 'A-F' 'a-f')"
+    fr_existing="$(_extract_fee_recipient "$f" | tr 'A-F' 'a-f')"
+    if [[ -n "$cb_existing" && -n "$fr_existing" ]]; then
+      EXIST["${cb_existing}|${fr_existing}"]=1
+    fi
   done
   shopt -u nullglob
 
+  echo
   local n
   read -r -p "How many keys to create? [default 1]: " n
   n="${n:-1}"
@@ -293,35 +298,42 @@ generate_keys_multi() {
     err "Invalid number."; return 1
   fi
 
-  say "You will be asked for a new MNEMONIC, COINBASE and FEE-RECIPIENT for each key."
+  say "You will be asked for MNEMONIC, COINBASE and FEE-RECIPIENT for each key."
   echo
 
   for ((i=1; i<=n; i++)); do
     echo
     say "Key $i of $n"
 
-    local COINBASE MN OUT FEE
+    local COINBASE MN FEE OUT
 
+    # --- COINBASE ---
     read -r -p "  Enter COINBASE ADDRESS (0x… or plain hex): " COINBASE
     [[ "$COINBASE" != 0x* ]] && COINBASE="0x$COINBASE"
     if [[ ! "$COINBASE" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
       err "  Invalid COINBASE address format. Skipping."; continue
     fi
     local cb_lc; cb_lc="$(tr 'A-F' 'a-f' <<<"$COINBASE")"
-    if [[ -n "${EXIST[$cb_lc]+x}" ]]; then
-      warn "  This coinbase already exists. Skipping."
-      continue
-    fi
 
-    read -r -p "  Enter MNEMONIC (12 words): " MN
+    # --- MNEMONIC ---
+    read -r -p "  Enter MNEMONIC (12/24 words): " MN
     if [[ -z "$MN" ]]; then
       err "  Empty mnemonic. Skipping."; continue
     fi
 
-    read -r -p "  Enter FEE-RECIPIENT PRIVATE KEY (0x… or plain hex): " FEE
+    # --- FEE-RECIPIENT ---
+    read -r -p "  Enter FEE-RECIPIENT (0x… or plain hex): " FEE
     [[ "$FEE" != 0x* ]] && FEE="0x$FEE"
-    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-      err "  Invalid FEE-RECIPIENT private key format. Skipping."; continue
+    if [[ ! "$FEE" =~ ^0x[0-9a-fA-F]+$ ]]; then
+      err "  Invalid FEE-RECIPIENT format (must be hex). Skipping."; continue
+    fi
+    local fee_lc; fee_lc="$(tr 'A-F' 'a-f' <<<"$FEE")"
+
+    # --- перевірка на повний збіг (coinbase + fee-recipient) ---
+    local pair="${cb_lc}|${fee_lc}"
+    if [[ -n "${EXIST[$pair]+x}" ]]; then
+      warn "  Key with the same COINBASE and FEE-RECIPIENT already exists. Skipping."
+      continue
     fi
 
     OUT="$(_next_sequencer_filename)"
@@ -334,10 +346,10 @@ generate_keys_multi() {
       --file "$(basename "$OUT")"
 
     if [[ -s "$OUT" ]]; then
-      EXIST["$cb_lc"]=1
+      EXIST["$pair"]=1
       say "  ✅ Created $(basename "$OUT")"
-      echo "     Fee-Recipient (privkey): $FEE"
-      echo "     Coinbase (address):      $COINBASE"
+      echo "     Fee-Recipient: $FEE"
+      echo "     Coinbase:      $COINBASE"
     else
       err "  Generation failed for $(basename "$OUT")."
     fi
@@ -348,6 +360,7 @@ generate_keys_multi() {
   say "Updated keystore list:"
   list_keys
 }
+
 
 
 
