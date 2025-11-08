@@ -682,15 +682,15 @@ while true; do
     case "$opt" in
       "Install dependencies")              install_deps; break ;;
       "Install Aztec Tools")               install_aztec_tools; break ;;
-      "List Keys")                         list_keys; break ;;
+      "List Keys")                         list_keys || true; break ;;
       "Generate Validator Keys (multi)")   generate_keys_multi || true; break ;;
       "Run Sequencer Node")                run_node; break ;;
-      "View Logs")                         view_logs; break ;;
-      "Check Sync Status")                 check_status; break ;;
-      "Watch Sync")                        watch_sync; break ;;
-      "Approve STAKE for Rollup")          install_foundry_and_approve; break ;;
-      "Add L1 Validator")                  add_l1_validator; break ;;
-      "Update Node")                       update_node; break ;;
+      "View Logs")                         view_logs || true; break ;;
+      "Check Sync Status")                 check_status || true; break ;;
+      "Watch Sync")                        watch_sync || true; break ;;
+      "Approve STAKE for Rollup")          install_foundry_and_approve || true; break ;;
+      "Add L1 Validator")                  add_l1_validator || true; break ;;
+      "Update Node")                       update_node || true; break ;;
       "Uninstall Node")                    uninstall_node; break ;;
       "Exit")                              echo "Goodbye!"; exit 0 ;;
       *) echo "Invalid option. Try again." ;;
